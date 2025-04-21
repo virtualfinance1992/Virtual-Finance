@@ -16,4 +16,6 @@ services:
         value: False
     autoDeploy: true
     preDeployCommand: |
-      python manage.py migrate
+          python manage.py migrate
+          python manage.py create_admin
+
