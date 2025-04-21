@@ -88,6 +88,10 @@ SIMPLE_JWT = {
 
 AUTH_USER_MODEL = 'user_mgmt.AdminRegistration'
 
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+
 
 
 MIDDLEWARE = [
@@ -100,6 +104,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'virtual_finance.urls'
@@ -185,3 +190,6 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development purposes
+
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
