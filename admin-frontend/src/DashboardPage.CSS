@@ -1,0 +1,153 @@
+.dashboard-page {
+  display: flex;
+  height: 100vh;
+  background-color: #f8f9fc;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background-color: #2f3542;
+  color: white;
+  padding: 25px 20px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+
+  h3 {
+    margin-bottom: 30px;
+    font-size: 20px;
+    border-bottom: 1px solid #57606f;
+    padding-bottom: 10px;
+  }
+
+  nav ul {
+    list-style: none;
+    padding: 0;
+
+    li {
+      margin: 10px 0;
+      cursor: pointer;
+      font-size: 15px;
+
+      &:hover {
+        color: #1e90ff;
+      }
+
+      ul {
+        padding-left: 15px;
+
+        li {
+          font-size: 14px;
+          color: #dfe4ea;
+        }
+      }
+    }
+  }
+}
+
+/* Dashboard Content */
+.dashboard-content {
+  flex: 1;
+  padding: 30px 40px;
+  overflow-y: auto;
+
+  .dashboard-header {
+    h1 {
+      font-size: 26px;
+      margin-bottom: 20px;
+    }
+
+    .huge-buttons {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 40px;
+
+      .huge-button {
+        flex: 1;
+        background-color: #ffffff;
+        border: 1px solid #e1e5ec;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        text-align: center;
+
+        h3 {
+          font-size: 18px;
+          color: #2f3542;
+        }
+
+        p {
+          font-size: 20px;
+          font-weight: bold;
+          color: #1e90ff;
+          margin-top: 5px;
+        }
+      }
+    }
+  }
+
+  .charts {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+
+    .chart-container {
+      flex: 1;
+      min-width: 300px;
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+
+      h3 {
+        font-size: 16px;
+        margin-bottom: 15px;
+        color: #2f3542;
+      }
+    }
+  }
+}
+
+/* Right Side Buttons */
+.actions {
+  width: 300px;
+  padding: 30px 20px;
+  border-left: 1px solid #e1e5ec;
+  background-color: #f1f2f6;
+
+  .action-buttons-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+
+    .action-button {
+      padding: 10px 12px;
+      background-color: #1e90ff;
+      border: none;
+      color: white;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+
+      &:hover {
+        background-color: #0d74d1;
+      }
+      
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
