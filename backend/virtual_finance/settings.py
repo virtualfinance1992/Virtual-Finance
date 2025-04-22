@@ -13,16 +13,16 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import dj_database_url
 import os
+from pathlib import Path
+
+
+import dj_database_url
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get("DATABASE_URL"),
-        conn_max_age=600,
-        ssl_require=True
-    )
+    'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
 }
 
-print("🟢 RENDER DATABASE_URL:", os.environ.get("DATABASE_URL"))
+#print("🟢 RENDER DATABASE_URL:", os.environ.get("DATABASE_URL"))
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -38,7 +38,7 @@ SECRET_KEY = 'django-insecure-!qkq=b6p=ft8#=xa+8zxtj7^!+s#$d5&%1i7q5)xr79rwc60nh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['virtual-finance-backend.onrender.com']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost','virtual-finance-backend.onrender.com']
 
 
 # Application definition
@@ -137,16 +137,16 @@ WSGI_APPLICATION = 'virtual_finance.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-#DATABASES = {
- #   'default': {
-  #      'ENGINE': 'django.db.backends.postgresql',
-   #     'NAME': 'Virtual-Finance',
-    #    'USER': 'postgres',
-     #   'PASSWORD': '123456',
-     #   'HOST': 'localhost',
-      #  'PORT': '5432',
-    #}
-#}
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'Virtual-Finance',
+        'USER': 'postgres',
+        'PASSWORD': '123456',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
 
 
 
@@ -193,5 +193,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development purposes
 
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
