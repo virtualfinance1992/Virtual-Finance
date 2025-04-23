@@ -18,15 +18,9 @@ from pathlib import Path
 
 import dj_database_url
 
-import dj_database_url
-import os
-
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL')
-    )
+    'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
 }
-
 
 #print("🟢 RENDER DATABASE_URL:", os.environ.get("DATABASE_URL"))
 
