@@ -1,3 +1,5 @@
+
+
 services:
   - type: web
     name: virtual-finance-backend
@@ -5,9 +7,9 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:$PORT
-
+    pythonVersion: 3.10
     envVars:
-      - key: DATABASE_URL
+      - key: postgresql://virtual_finance_user:mINhlmZC84IFFjcJxn3khPp8TVvELQ89@dpg-d031elqdbo4c73c6kf00-a/virtual_finance
         fromDatabase:
           name: virtual_finance
           property: connectionString
@@ -15,8 +17,6 @@ services:
         sync: false
       - key: DEBUG
         value: False
-
-    autoDeploy: true
     preDeployCommand: |
       python manage.py migrate
       python manage.py create_admin
