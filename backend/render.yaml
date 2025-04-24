@@ -10,7 +10,9 @@ services:
     pythonVersion: 3.10
 
     envVars:
-      - key: DATABASE_URL
+      - Key: DATABASE_URL
+        Value: postgresql://virtual_finance_user:mINhlmZC84IFFjcJxn3khPp8TVvELQ89@dpg-d031elqdbo4c73c6kf00-a.oregon-postgres.render.com/virtual_finance
+
         fromDatabase:
           name: virtual_finance
           property: connectionString

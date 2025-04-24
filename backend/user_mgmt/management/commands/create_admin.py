@@ -8,8 +8,12 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         call_command('migrate', interactive=False)
         User = get_user_model()
-        if not User.objects.filter(username='admin').exists():
-            User.objects.create_superuser('admin', 'admin@example.com', 'admin1234')
+        if not User.objects.filter(username='admin').exists():  # Change 'username' if needed
+            User.objects.create_superuser(
+                username='admin',
+                email='admin@example.com',
+                password='admin1234'
+            )
             self.stdout.write(self.style.SUCCESS("✅ Admin user created."))
         else:
             self.stdout.write(self.style.WARNING("ℹ️ Admin already exists."))
