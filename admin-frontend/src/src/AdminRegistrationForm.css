@@ -1,0 +1,71 @@
+.admin-form-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f3f3f3;
+    height: 100vh;
+  }
+  
+  .admin-form-box {
+    background: #fff;
+    padding: 40px 30px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+    width: 400px;
+  }
+  
+  .admin-title {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 25px;
+    color: #2c3e50;
+  }
+  
+  .form-group {
+    margin-bottom: 18px;
+  }
+  
+  label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #34495e;
+  }
+  
+  input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #bdc3c7;
+    border-radius: 5px;
+    font-size: 14px;
+  }
+  
+  input:focus {
+    border-color: #3498db;
+    outline: none;
+  }
+  
+  .submit-button {
+    background-color: #2c3e50;
+    color: white;
+    padding: 12px;
+    width: 100%;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  
+  .submit-button:hover {
+    background-color: #34495e;
+  }
+  
+  .form-message {
+    margin-top: 15px;
+    text-align: center;
+    font-weight: bold;
+    color: #e74c3c;
+  }
+  

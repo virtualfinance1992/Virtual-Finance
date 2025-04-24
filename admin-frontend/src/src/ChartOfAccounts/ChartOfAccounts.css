@@ -1,0 +1,164 @@
+/* ChartOfAccounts.css */
+
+.coa-dashboard {
+  padding: 30px;
+  background: #f4f6f8;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.coa-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.coa-header h2 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.company-select label {
+  font-weight: 600;
+  margin-right: 10px;
+}
+
+.company-select select {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  min-width: 200px;
+}
+
+.coa-actions {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.coa-actions button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.default-btn {
+  background-color: #8e44ad;
+}
+
+.default-btn:hover {
+  background-color: #732d91;
+}
+
+.custom-btn {
+  background-color: #3498db;
+}
+
+.custom-btn:hover {
+  background-color: #2a80b9;
+}
+
+.dashboard-btn {
+  background-color: #2ecc71;
+}
+
+.dashboard-btn:hover {
+  background-color: #27ae60;
+}
+
+.success-message {
+  color: green;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.coa-form {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.coa-form input,
+.coa-form select {
+  display: block;
+  margin-bottom: 15px;
+  padding: 10px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.coa-form label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 15px;
+  font-weight: 500;
+}
+
+.coa-form button {
+  background-color: #34495e;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.coa-form button:hover {
+  background-color: #2c3e50;
+}
+
+.group-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.group-card {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease;
+}
+
+.group-card:hover {
+  transform: translateY(-3px);
+}
+
+.group-card h4 {
+  margin-bottom: 10px;
+  color: #2c3e50;
+}
+
+.group-card p {
+  margin: 5px 0;
+  color: #555;
+}
+
+.badge {
+  display: inline-block;
+  margin-top: 10px;
+  background-color: #f39c12;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.no-data {
+  color: #999;
+  font-style: italic;
+}
