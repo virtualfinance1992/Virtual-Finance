@@ -56,3 +56,6 @@ Thumbs.db
 
 # ─── Miscellaneous ───────────────────────────────────────────────────────
 .env
+
+
+whatsapp_erp_microservice/config.py
