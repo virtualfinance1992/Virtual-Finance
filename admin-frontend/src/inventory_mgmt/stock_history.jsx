@@ -17,7 +17,7 @@ const StockHistoryPage = ({ companyId, companyName }) => {
     const fetchHistory = async () => {
       try {
         const token = localStorage.getItem('accessToken');
-        const res = await fetch(`https://virtual-finance-backend.onrender.com/api/inventory/history/${companyId}/`, {
+        const res = await fetch(`http://localhost:8000/api/inventory/history/${companyId}/`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

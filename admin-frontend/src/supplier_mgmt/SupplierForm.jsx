@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const SupplierForm = ({ onClose }) => {
   const [formData, setFormData] = useState({
@@ -10,24 +10,38 @@ const SupplierForm = ({ onClose }) => {
     pan_number: '',
   });
 
+  const [companyId, setCompanyId] = useState(null);
+
+  useEffect(() => {
+    localStorage.getItem('selectedCompanyId');
+
+    const storedCompanyId = localStorage.getItem('selectedCompanyId');
+    const token = localStorage.getItem('accessToken');
+    console.log("🏢 selectedCompanyId:", storedCompanyId);
+    console.log("🔐 accessToken present:", !!token);
+    setCompanyId(storedCompanyId);
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    console.log(`✏️ Input changed - ${name}:`, value);
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const companyId = localStorage.getItem('selectedCompanyId');
     const token = localStorage.getItem('accessToken');
 
     if (!companyId || !token) {
       alert("⚠️ Company ID or token missing.");
+      console.error("🚫 Submission blocked due to missing companyId/token");
       return;
     }
 
     try {
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/suppliers/create/${companyId}/`, {
+      console.log("📤 Submitting supplier data:", formData);
+      const res = await fetch(`http://localhost:8000/api/suppliers/create/${companyId}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -36,8 +50,15 @@ const SupplierForm = ({ onClose }) => {
         body: JSON.stringify(formData),
       });
 
-      if (!res.ok) throw new Error('Failed to save supplier');
+      const data = await res.json();
 
+      if (!res.ok) {
+        console.error("❌ API error:", data);
+        alert(`❌ Failed to save supplier: ${data.error || 'Unknown error'}`);
+        return;
+      }
+
+      console.log("✅ Supplier created successfully:", data);
       alert('✅ Supplier saved successfully');
       onClose();
     } catch (error) {
@@ -56,52 +77,75 @@ const SupplierForm = ({ onClose }) => {
         boxShadow: '0 16px 32px rgba(0, 0, 0, 0.25)',
         fontFamily: 'Arial, sans-serif',
       }}
-      onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
+      onClick={(e) => e.stopPropagation()}
     >
       <h2 style={{ marginBottom: '20px', color: '#003366', textAlign: 'center' }}>Add New Supplier</h2>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '14px' }}>
-          <label style={{ fontWeight: 'bold' }}>Supplier Name:</label>
-          <input type="text" name="name" value={formData.name} onChange={handleChange} required
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
-        </div>
-
-        <div style={{ marginBottom: '14px' }}>
-          <label style={{ fontWeight: 'bold' }}>Phone:</label>
-          <input type="text" name="phone" value={formData.phone} onChange={handleChange}
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
-        </div>
-
-        <div style={{ marginBottom: '14px' }}>
-          <label style={{ fontWeight: 'bold' }}>Email:</label>
-          <input type="email" name="email" value={formData.email} onChange={handleChange}
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
-        </div>
-
-        <div style={{ marginBottom: '14px' }}>
-          <label style={{ fontWeight: 'bold' }}>Address:</label>
-          <textarea name="address" value={formData.address} onChange={handleChange} rows="2"
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
-        </div>
-
-        <div style={{ marginBottom: '14px' }}>
-          <label style={{ fontWeight: 'bold' }}>GST Number:</label>
-          <input type="text" name="gst_number" value={formData.gst_number} onChange={handleChange}
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
-        </div>
+        {[
+          { label: 'Supplier Name', name: 'name', type: 'text' },
+          { label: 'Phone', name: 'phone', type: 'text' },
+          { label: 'Email', name: 'email', type: 'email' },
+          { label: 'GST Number', name: 'gst_number', type: 'text' },
+          { label: 'PAN Number', name: 'pan_number', type: 'text' },
+        ].map(({ label, name, type }) => (
+          <div style={{ marginBottom: '14px' }} key={name}>
+            <label style={{ fontWeight: 'bold' }}>{label}:</label>
+            <input
+              type={type}
+              name={name}
+              value={formData[name]}
+              onChange={handleChange}
+              required={name === 'name'}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid #ccc',
+              }}
+            />
+          </div>
+        ))}
 
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ fontWeight: 'bold' }}>PAN Number:</label>
-          <input type="text" name="pan_number" value={formData.pan_number} onChange={handleChange}
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
+          <label style={{ fontWeight: 'bold' }}>Address:</label>
+          <textarea
+            name="address"
+            value={formData.address}
+            onChange={handleChange}
+            rows="2"
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '6px',
+              border: '1px solid #ccc',
+            }}
+          />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
-          <button type="submit" style={{ padding: '12px 24px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '6px' }}>
+          <button
+            type="submit"
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#28a745',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+            }}
+          >
             Save
           </button>
-          <button type="button" onClick={onClose} style={{ padding: '12px 24px', backgroundColor: '#ccc', border: 'none', borderRadius: '6px' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#ccc',
+              border: 'none',
+              borderRadius: '6px',
+            }}
+          >
             Cancel
           </button>
         </div>

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 
-const CustomerForm = ({ onClose }) => {
+const CustomerForm = ({ onClose, initialName = '', onCustomerSaved }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    name: initialName,
     gst: '',
     address: '',
     phone: '',
@@ -19,29 +19,29 @@ const CustomerForm = ({ onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     const token = localStorage.getItem('accessToken');
     const companyId = localStorage.getItem('activeCompanyId');
-  
+
     console.log("🔐 Access Token from localStorage:", token);
     console.log("🏢 Company ID from localStorage:", companyId);
-  
+
     if (!companyId) {
       alert("❌ Company ID not found in localStorage.");
       return;
     }
-  
+
     const payload = {
       ...formData,
       company: companyId,
       opening_balance: parseFloat(formData.opening_balance || 0),
       balance_type: formData.balance_type
     };
-  
+
     console.log("🚀 Submitting new customer to /api/customers/ with payload:", payload);
-  
+
     try {
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/customers/${companyId}/`, {
+      const res = await fetch(`http://localhost:8000/api/customers/${companyId}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -49,25 +49,29 @@ const CustomerForm = ({ onClose }) => {
         },
         body: JSON.stringify(payload)
       });
-  
+
       if (!res.ok) {
         const errData = await res.json();
         console.error("❌ Backend returned error:", errData);
         alert(`❌ Error: ${errData.error || 'Could not create customer.'}`);
         return;
       }
-  
+
       const result = await res.json();
       console.log("✅ Customer created:", result);
       alert("✅ Customer added successfully.");
+
+      // ✅ Notify parent with full customer object
+      if (onCustomerSaved) {
+        onCustomerSaved(result);
+      }
+
       onClose();
     } catch (err) {
       console.error("❌ Error while saving customer:", err);
       alert("❌ Failed to create customer.");
     }
   };
-  
-  
   
 
   return (

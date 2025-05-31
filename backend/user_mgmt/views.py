@@ -115,3 +115,104 @@ from rest_framework.permissions import IsAuthenticated
 def assign_role(request):
     # sample dummy logic
     return Response({"message": "Role assigned successfully"})
+
+
+
+
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from .models import Company
+from .serializers import CompanySerializer
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_company_details(request, company_id):
+    try:
+        print(f"🔁 Attempting to fetch company details for ID: {company_id}")
+        
+        company = get_object_or_404(Company, id=company_id)
+
+        # Admin access check
+        if company.admin != request.user:
+            print(f"⛔ Access denied: {request.user.username} is not the admin of company ID {company_id}")
+            return JsonResponse({'error': 'Unauthorized access'}, status=403)
+
+        print(f"✅ Company data fetched for ID {company_id}: {company.company_name}")
+
+        # Serialize for absolute media URLs
+        serializer = CompanySerializer(company, context={'request': request})
+        data = serializer.data  # contains logo_url, qr_code_url, signature_url
+
+        company_data = {
+            "company_name": company.company_name,
+            "pan_number": company.pan_number,
+            "email": company.email,
+            "phone_number": company.phone_number,
+            "address": company.address,
+            "gst_number": company.gst_number,
+            "industry_type": company.industry_type,
+            "website_url": company.website_url,
+            "is_active": company.is_active,
+            "account_name": company.account_name,
+            "account_number": company.account_number,
+            "bank_name": company.bank_name,
+            "branch": company.branch,
+            "ifsc_code": company.ifsc_code,
+            "upi_id": company.upi_id,
+
+            # ✅ Serialized absolute URLs
+            "logo": data.get("logo_url"),
+            "qr_code": data.get("qr_code_url"),
+            "signature": data.get("signature_url"),
+        }
+
+        print(f"🧾 Final company data returned: {company_data}")
+        return JsonResponse(company_data, status=200)
+
+    except Company.DoesNotExist:
+        print(f"❌ Company with ID {company_id} does not exist.")
+        return JsonResponse({"error": "Company not found"}, status=404)
+
+
+
+
+
+    # To update company details
+
+
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_company_profile(request, company_id):
+    print(f"🔐 Authenticated user: {request.user} | Is authenticated: {request.user.is_authenticated}")
+    
+    if not request.user.is_authenticated:
+        print("❌ Unauthorized access attempt: token is expired or invalid")
+        return Response({'error': 'Authentication required or token expired.'}, status=401)
+
+    print(f"🔄 Incoming PATCH update request for company ID: {company_id}")
+
+    try:
+        company = Company.objects.get(id=company_id)
+        print(f"✅ Company found: {company.company_name}")
+    except Company.DoesNotExist:
+        print(f"❌ Company with ID {company_id} does not exist.")
+        return Response({'error': 'Company not found'}, status=404)
+
+    # Optional admin check
+    if company.admin != request.user:
+        print(f"⛔ Access denied: {request.user.username} is not the admin of company ID {company_id}")
+        return Response({'error': 'You are not authorized to update this company.'}, status=403)
+
+    serializer = CompanySerializer(company, data=request.data, partial=True)
+
+    if serializer.is_valid():
+        updated_company = serializer.save()
+        print(f"📝 Company profile updated by {request.user.username}: {updated_company.company_name}")
+        return Response(serializer.data)
+    else:
+        print(f"⚠️ Validation error during company update: {serializer.errors}")
+        return Response(serializer.errors, status=400)

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './AdminRegistrationForm.css';
+import logo from './lOGO.png';
 
 function AdminRegistrationForm() {
   const [formData, setFormData] = useState({
@@ -14,21 +15,16 @@ function AdminRegistrationForm() {
     panCard: '',
     companyName: '',
   });
-
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
+  const handleChange = e => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setFormData(f => ({ ...f, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-
     if (formData.password !== formData.confirmPassword) {
       setMessage("❌ Passwords do not match.");
       return;
@@ -45,26 +41,25 @@ function AdminRegistrationForm() {
       company_name: formData.companyName,
     };
 
+    // 🔍 debug payload
+    console.log('Registration Data:', registrationData);
+
     try {
-      const response = await axios.post(
-        'https://virtual-finance-backend.onrender.com/api/admin/register/',
+      await axios.post(
+        'http://127.0.0.1:8000/api/admin/register/',
         registrationData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+        { headers: { 'Content-Type': 'application/json' } }
       );
       setMessage("✅ Registration successful!");
       navigate('/company');
-    } catch (error) {
-      console.error('Registration failed:', error);
-      const errorData = error.response?.data;
-      if (errorData) {
-        const errors = Object.entries(errorData)
-          .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+    } catch (err) {
+      console.error('Registration failed:', err);
+      const errData = err.response?.data;
+      if (errData) {
+        const errs = Object.entries(errData)
+          .map(([f, msgs]) => `${f}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
           .join(' | ');
-        setMessage(`❌ Registration failed: ${errors}`);
+        setMessage(`❌ Registration failed: ${errs}`);
       } else {
         setMessage("❌ Registration failed: Unknown error");
       }
@@ -73,7 +68,13 @@ function AdminRegistrationForm() {
 
   return (
     <div className="admin-form-container">
+      {/* small corner logo */}
+      <img src={logo} alt="Logo" className="admin-page-logo" />
+
       <form className="admin-form-box" onSubmit={handleSubmit}>
+        {/* circular logo inside the card */}
+        <img src={logo} alt="Logo" className="center-logo" />
+
         <h2 className="admin-title">Admin Registration</h2>
 
         {[
@@ -84,22 +85,25 @@ function AdminRegistrationForm() {
           ['Phone Number', 'phoneNumber', 'text'],
           ['Email', 'email', 'email'],
           ['PAN Card Number', 'panCard', 'text'],
-          ['Company Name', 'companyName', 'text']
+          ['Company Name', 'companyName', 'text'],
         ].map(([label, name, type]) => (
           <div key={name} className="form-group">
             <label htmlFor={name}>{label}</label>
             <input
-              type={type}
-              name={name}
               id={name}
+              name={name}
+              type={type}
               value={formData[name]}
               onChange={handleChange}
+              placeholder={label}
               required
             />
           </div>
         ))}
 
-        <button type="submit" className="submit-button">Register</button>
+        <button type="submit" className="submit-button">
+          Register
+        </button>
         {message && <div className="form-message">{message}</div>}
       </form>
     </div>

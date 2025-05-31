@@ -18,9 +18,7 @@ from user_mgmt.models import Company
 from accounting.serializers import AccountGroupSerializer
 
 # ✅ Full Implementation: Interlinked Chart of Accounts with Hierarchical Nature Logic
-# ✅ Full Implementation: Interlinked Chart of Accounts with Hierarchical Nature Logic
-# ✅ Full Implementation: Interlinked Chart of Accounts with Hierarchical Nature Logic
-# ✅ Full Implementation: Interlinked Chart of Accounts with Hierarchical Nature Logic
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -233,26 +231,48 @@ def create_account_group(request, company_id):
 
 
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.utils import timezone
+from .models import LedgerAccount, AccountGroup
+from .serializers import LedgerAccountSerializer
+from user_mgmt.models import Company
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-
 def create_ledger(request):
-    group_name = request.data.get("group_name")  # ✅ Use group_name
+    print("📥 Incoming request to create ledger:", request.data)
+
+    group_name = request.data.get("group_name")
     company_id = request.data.get("company_id")
     name = request.data.get("name")
     opening_balance = request.data.get("opening_balance", 0)
     balance_type = request.data.get("opening_balance_type", "Dr")
+    is_customer = request.data.get("is_customer", False)
+    is_supplier = request.data.get("is_supplier", False)
+    main_party_type = request.data.get("main_party_type", None)
+
+    if not all([group_name, company_id, name]):
+        print("❌ Missing required fields.")
+        return Response({"error": "group_name, company_id, and name are required."}, status=400)
 
     try:
         company = Company.objects.get(id=company_id, admin=request.user)
-        group = AccountGroup.objects.get(group_name=group_name, company=company)  # ✅ Filter by name and company
+        group = AccountGroup.objects.get(group_name=group_name, company=company)
+        print(f"🏢 Company: {company.company_name} | 📘 Group: {group.group_name}")
+
     except Company.DoesNotExist:
+        print("❌ Invalid company or unauthorized access.")
         return Response({"error": "Invalid company or unauthorized."}, status=403)
     except AccountGroup.DoesNotExist:
+        print(f"❌ Account group '{group_name}' not found in company.")
         return Response({"error": "Account group not found in this company."}, status=404)
 
-    if LedgerAccount.objects.filter(name=name, account_group=group, company=company).exists():
-        return Response({"error": "Ledger with this name already exists in the selected group."}, status=400)
+    if LedgerAccount.objects.filter(name=name, company=company).exists():
+        print(f"⚠️ Ledger with name '{name}' already exists in company.")
+        return Response({"error": "Ledger with this name already exists in this company."}, status=400)
 
     ledger = LedgerAccount.objects.create(
         name=name,
@@ -262,8 +282,12 @@ def create_ledger(request):
         opening_balance_type=balance_type,
         is_active=True,
         created_at=timezone.now(),
+        is_customer=is_customer,
+        is_supplier=is_supplier,
+        main_party_type = request.data.get("main_party_type") or "General"  # ✅ fallback default
     )
 
+    print("✅ Ledger created:", ledger.name, "| Dual Role:", is_customer, is_supplier)
     serializer = LedgerAccountSerializer(ledger)
     return Response({
         "message": "✅ Ledger created successfully.",
@@ -271,57 +295,86 @@ def create_ledger(request):
     }, status=201)
 
 
-# To Update, Delete and Download ledger
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
-from .models import LedgerAccount
-from .serializers import LedgerAccountSerializer
-from django.http import FileResponse
-from io import BytesIO
-from reportlab.pdfgen import canvas
-
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def update_ledger(request, ledger_id):
     print(f"✏️ Received request to update ledger ID {ledger_id}: {request.data}")
+
     try:
         ledger = LedgerAccount.objects.get(id=ledger_id)
     except LedgerAccount.DoesNotExist:
-        print("❌ Ledger not found")
+        print("❌ Ledger not found.")
         return Response({"error": "Ledger not found"}, status=status.HTTP_404_NOT_FOUND)
 
     serializer = LedgerAccountSerializer(ledger, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
-        print("✅ Ledger updated successfully")
+        print("✅ Ledger updated:", ledger.name)
         return Response(serializer.data)
     else:
-        print("❌ Validation errors:", serializer.errors)
+        print("❌ Validation error:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+from datetime import datetime
+from io import BytesIO
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from xhtml2pdf import pisa
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+
+from .models import LedgerAccount
+from vouchers.models import JournalEntry
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def download_ledger_pdf(request, ledger_id):
-    print(f"📥 PDF download requested for ledger ID {ledger_id}")
+    print(f"📥 Generating PDF for Ledger ID: {ledger_id} by user {request.user}")
+
     try:
-        ledger = LedgerAccount.objects.get(id=ledger_id)
+        ledger = LedgerAccount.objects.select_related('company', 'account_group').get(id=ledger_id)
     except LedgerAccount.DoesNotExist:
         print("❌ Ledger not found")
-        return Response({"error": "Ledger not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'detail': 'Ledger not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    buffer = BytesIO()
-    p = canvas.Canvas(buffer)
-    p.drawString(100, 800, f"Ledger Report: {ledger.name}")
-    p.drawString(100, 780, f"Opening Balance: ₹{ledger.opening_balance} {ledger.opening_balance_type}")
-    p.drawString(100, 760, f"Created on: {ledger.created_at.strftime('%Y-%m-%d')}")
-    p.showPage()
-    p.save()
+    entries = JournalEntry.objects.filter(ledger=ledger).select_related('voucher').order_by('voucher__date')
+    entry_list = []
 
-    buffer.seek(0)
-    print("✅ PDF generated and ready for download")
-    return FileResponse(buffer, as_attachment=True, filename=f"{ledger.name}_report.pdf")
+    for e in entries:
+        counter = JournalEntry.objects.filter(voucher=e.voucher_id).exclude(id=e.id).select_related('ledger').first()
+        party_name = counter.ledger.name if counter else ''
+        entry_list.append({
+            "voucher_id": e.voucher.id,
+            "date": e.voucher.date,
+            "voucher_number": getattr(e.voucher, 'voucher_number', ''),
+            "party_name": party_name,
+            "type": "Dr" if e.is_debit else "Cr",
+            "amount": float(e.amount),
+            "particulars": getattr(e, 'narration', '') or getattr(e.voucher, 'narration', ''),
+        })
+
+    # ✅ Render HTML to PDF
+    html = render_to_string('ledger_pdf_template.html', {
+        'ledger': ledger,
+        'entries': entry_list,
+        'company': ledger.company,
+        'date': datetime.today(),
+    })
+
+    result = BytesIO()
+    pdf = pisa.pisaDocument(BytesIO(html.encode("UTF-8")), result)
+    if pdf.err:
+        return HttpResponse('❌ PDF generation failed', status=500)
+
+    response = HttpResponse(result.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{ledger.name.replace(" ", "_")}_Ledger.pdf"'
+    return response
+
 
 
 
@@ -343,3 +396,127 @@ def delete_ledger(request, ledger_id):
     ledger.delete()
     print("✅ Ledger deleted successfully")
     return Response({"message": "Ledger deleted successfully"}, status=status.HTTP_200_OK)
+
+
+
+# List Expense Ledger
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_expense_ledgers(request, company_id):
+    try:
+        company = Company.objects.get(id=company_id, admin=request.user)
+    except Company.DoesNotExist:
+        return Response({"error": "Company not found."}, status=404)
+
+    # Only active ledgers whose group is of nature 'Expense'
+    exp_ledgers = LedgerAccount.objects.filter(
+        company=company,
+        is_active=True,
+        account_group__nature='Expense'
+    )
+    print(f"📦 Returning {exp_ledgers.count()} expense‐type ledgers for company {company_id}")
+    serializer = LedgerAccountSerializer(exp_ledgers, many=True)
+    return Response(serializer.data)
+
+
+
+
+# Ledger details & Ledger entries
+# backend/accounting/views.py
+
+import logging
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+
+from .models import LedgerAccount
+from .serializers import LedgerAccountSerializer
+from vouchers.models import JournalEntry
+
+# ————— Configure module logger —————
+logger = logging.getLogger(__name__)
+logging.getLogger('django').setLevel(logging.INFO)     # ensure INFO+ shows
+logger.setLevel(logging.DEBUG)                         # and DEBUG for ours
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ledger_detail(request, company_id, ledger_id):
+    logger.info(f"[ledger_detail] user={request.user} → company={company_id}, ledger={ledger_id}")
+    try:
+        ledger = LedgerAccount.objects.get(id=ledger_id, company_id=company_id)
+        logger.info(f"[ledger_detail] Found ledger: id={ledger.id}, name={ledger.name}")
+    except LedgerAccount.DoesNotExist:
+        logger.warning(f"[ledger_detail] NOT FOUND: company={company_id}, ledger={ledger_id}")
+        return Response(
+            {"detail": "Ledger not found for this company."},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    serializer = LedgerAccountSerializer(ledger)
+    logger.debug(f"[ledger_detail] Serialized output: {serializer.data}")
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ledger_entries(request, company_id, ledger_id):
+    logger.info(
+        f"[ledger_entries] User={request.user} "
+        f"requested entries for company_id={company_id}, ledger_id={ledger_id}"
+    )
+
+    # 1) Guard: ensure ledger belongs to this company
+    if not LedgerAccount.objects.filter(id=ledger_id, company_id=company_id).exists():
+        logger.warning(
+            f"[ledger_entries] Ledger not found in company: "
+            f"company_id={company_id}, ledger_id={ledger_id}"
+        )
+        return Response(
+            {"detail": "Ledger not found for this company."},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # 2) Fetch all entries, ordered by voucher date
+    entries = JournalEntry.objects.filter(
+        ledger_id=ledger_id,
+        ledger__company_id=company_id
+    ).select_related('voucher').order_by('voucher__date')
+    logger.info(f"[ledger_entries] Retrieved {entries.count()} entries")
+
+    data = []
+    for e in entries:
+        # — build “particulars” safely —
+        particulars = ''
+        if hasattr(e, 'narration') and e.narration:
+            particulars = e.narration
+        elif hasattr(e.voucher, 'narration') and e.voucher.narration:
+            particulars = e.voucher.narration
+
+        # — NEW: pull voucher_number —
+        voucher_no = getattr(e.voucher, 'voucher_number', '')
+        logger.debug(f"[ledger_entries] Entry {e.id} voucher_number → '{voucher_no}'")
+
+        # — NEW: resolve party_name from the “other” entry in this voucher —
+        counter = JournalEntry.objects.filter(
+            voucher=e.voucher_id
+        ).exclude(id=e.id).select_related('ledger').first()
+        party_name = counter.ledger.name if counter else ''
+        logger.debug(f"[ledger_entries] Entry {e.id} party_name → '{party_name}'")
+
+        # assemble the row
+        entry = {
+            "voucher_id":     e.voucher.id,          
+            "id":             e.id,
+            "date":           e.voucher.date,
+            "voucher_number": voucher_no,
+            "party_name":     party_name,
+            "type":           "Dr" if e.is_debit else "Cr",
+            "amount":         float(e.amount),
+            "particulars":    particulars,
+        }
+        logger.debug(f"[ledger_entries] Final row: {entry}")
+        data.append(entry)
+
+    return Response(data)

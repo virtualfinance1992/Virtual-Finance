@@ -13,7 +13,7 @@ function LoginPage() {
     setError('');  // Reset error state before trying
 
     try {
-      const response = await axios.post('https://virtual-finance-backend.onrender.com/api/token/', {
+      const response = await axios.post('http://127.0.0.1:8000/api/token/', {
         username,
         password,
       });

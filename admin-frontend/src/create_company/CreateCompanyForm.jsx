@@ -31,7 +31,7 @@ const Company = () => {
 
   const fetchCompanies = async () => {
     try {
-      const response = await axios.get('https://virtual-finance-backend.onrender.com/api/admin/company/list/', {
+      const response = await axios.get('http://127.0.0.1:8000/api/admin/company/list/', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCompanies(response.data);
@@ -60,8 +60,8 @@ const Company = () => {
 
     try {
       const url = editingCompanyId
-        ? `https://virtual-finance-backend.onrender.com/api/admin/company/update/${editingCompanyId}/`
-        : 'https://virtual-finance-backend.onrender.com/api/admin/company/create/';
+        ? `http://127.0.0.1:8000/api/admin/company/update/${editingCompanyId}/`
+        : 'http://127.0.0.1:8000/api/admin/company/create/';
       const method = editingCompanyId ? 'put' : 'post';
 
       const response = await axios({
@@ -101,7 +101,7 @@ const Company = () => {
     if (!window.confirm('Are you sure you want to delete this company?')) return;
 
     try {
-      await axios.delete(`https://virtual-finance-backend.onrender.com/api/admin/company/delete/${id}/`, {
+      await axios.delete(`http://127.0.0.1:8000/api/admin/company/delete/${id}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert('🗑️ Company deleted.');

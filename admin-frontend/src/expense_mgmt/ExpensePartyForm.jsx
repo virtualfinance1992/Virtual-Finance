@@ -29,7 +29,7 @@ const ExpensePartyForm = ({ onClose }) => {
     }
 
     try {
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/expenses/party/create/${companyId}/`, {
+      const res = await fetch(`http://localhost:8000/api/expenses/party/create/${companyId}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

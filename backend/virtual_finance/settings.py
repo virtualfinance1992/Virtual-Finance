@@ -11,20 +11,23 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-import dj_database_url
+
 import os
 from pathlib import Path
 
 
-import dj_database_url
-import os
+
+
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600,
-        ssl_require=True
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'Virtual-Finance',
+        'USER': 'postgres',
+        'PASSWORD': '123456',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
 }
 
 
@@ -68,6 +71,9 @@ INSTALLED_APPS = [
     'customer_mgmt',# Customer Management
     'supplier_mgmt', # Supplier Management
     'inventory_mgmt', #Inventory Management
+    'reports', # Reports
+    'analytics',# Analytics
+    'voucher_audit.apps.VoucherAuditConfig', # Aufit Snapshot
 ]
 
 
@@ -92,6 +98,7 @@ SIMPLE_JWT = {
     'ISSUER': None,
     'USER_ID_FIELD': 'username',
     'USER_ID_CLAIM': 'user_id',
+
 }
 
 
@@ -107,8 +114,11 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     
+    
+    
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'middleware.ThreadUserMiddleware', # added new
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -190,3 +200,20 @@ CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development purposes
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    # add your other front-end hosts here
+]
+
+# And explicitly allow credentials (cookies, auth headers):
+CORS_ALLOW_CREDENTIALS = True
+
+
+# settings.py
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    # plus any other dev or prod origins you need
+]

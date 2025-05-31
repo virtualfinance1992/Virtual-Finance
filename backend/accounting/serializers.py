@@ -23,38 +23,48 @@ class LedgerAccountSerializer(serializers.ModelSerializer):
     net_balance = serializers.SerializerMethodField()
     balance_type = serializers.SerializerMethodField()
 
+    # 🆕 Dual-role fields
+    is_customer = serializers.BooleanField(required=False)
+    is_supplier = serializers.BooleanField(required=False)
+    main_party_type = serializers.CharField(required=False, allow_null=True)
+
     class Meta:
         model = LedgerAccount
         fields = [
             'id',
             'name',
-            'group_name',        # ✅ Display group
+            'group_name',
             'group_id',
             'nature',
             'opening_balance',
             'opening_balance_type',
             'created_at',
-            'net_balance',       # ✅ Computed
-            'balance_type',      # ✅ Dr / Cr
+            'net_balance',
+            'balance_type',
+            'is_customer',       # ✅ new
+            'is_supplier',       # ✅ new
+            'main_party_type',   # ✅ new
         ]
 
     def get_net_balance(self, obj):
         try:
             entries = JournalEntry.objects.filter(ledger=obj)
-            total = sum(e.amount if e.is_debit else -e.amount for e in entries)
-            print(f"📊 Ledger: {obj.name} | Entries: {entries.count()} | Net Balance: {total}")
-            return round(total, 2)
+            total   = sum(e.amount if e.is_debit else -e.amount for e in entries)
+            print(f"📊 [NetBalance] Ledger '{obj.name}' (ID: {obj.id}) → raw total = {total}")
+            absolute_total = abs(total)
+            print(f"📊 [NetBalance] Ledger '{obj.name}' → absolute = {absolute_total}")
+            return round(absolute_total, 2)
         except Exception as e:
-            print(f"❌ Error calculating net_balance for ledger {obj.name} ({obj.id}): {e}")
+            print(f"❌ [NetBalance Error] Ledger '{obj.name}' (ID: {obj.id}): {e}")
             return 0.0
 
     def get_balance_type(self, obj):
         try:
             entries = JournalEntry.objects.filter(ledger=obj)
-            total = sum(e.amount if e.is_debit else -e.amount for e in entries)
-            result = "Dr" if total >= 0 else "Cr"
-            print(f"📈 Ledger: {obj.name} | Type: {result}")
+            total   = sum(e.amount if e.is_debit else -e.amount for e in entries)
+            result  = "DR" if total >= 0 else "CR"
+            print(f"📈 [BalanceType] Ledger '{obj.name}' (ID: {obj.id}) → raw total = {total} → {result}")
             return result
         except Exception as e:
-            print(f"❌ Error calculating balance_type for ledger {obj.name} ({obj.id}): {e}")
+            print(f"❌ [BalanceType Error] Ledger '{obj.name}' (ID: {obj.id}): {e}")
             return "-"

@@ -1,305 +1,515 @@
-// ✅ All original logic preserved and console logs retained
+// src/ledger/LedgerPage.jsx
 import React, { useEffect, useState } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import jsPDF from 'jspdf';
-import axios from "axios";
+import axios from 'axios';
+import { useParams, Link } from 'react-router-dom';
+import './LedgerPage.css';
 
+// Base API URL pointing at the accounting router
+const API_BASE = 'http://localhost:8000/api/accounting';
 
 const LedgerPage = () => {
-  const [company, setCompany] = useState(null);
-  const [groups, setGroups] = useState([]);
-  const [ledgers, setLedgers] = useState([]);
+  const { companyId: paramId } = useParams();
+  const token = localStorage.getItem('accessToken');
+
+  // Initialize company from params or localStorage
+  const [company, setCompany] = useState(() => {
+    const lsId   = localStorage.getItem('activeCompanyId');
+    const lsName = localStorage.getItem('activeCompanyName') || '';
+    const base   = lsId ? { id: +lsId, company_name: lsName } : {};
+    if (paramId) {
+      const id = +paramId;
+      if (base.id && base.id !== id) {
+        console.warn(`Param (${id}) vs localStorage (${base.id}) differ`);
+      }
+      return { id, company_name: base.company_name };
+    }
+    return base;
+  });
+
+  // State
+  const [groups, setGroups]             = useState([]);
+  const [ledgers, setLedgers]           = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
-  const [showLedgerPopup, setShowLedgerPopup] = useState(false);
-  const [newLedger, setNewLedger] = useState({
+  const [searchText, setSearchText]     = useState('');
+  const [selectedFY, setSelectedFY]     = useState('All');
+  const [showCreate, setShowCreate]     = useState(false);
+  const [newLedger, setNewLedger]       = useState({
     name: '',
     opening_balance: '',
     opening_balance_type: 'Dr',
     created_at: new Date().toISOString().split('T')[0]
   });
-  const [hoveredLedger, setHoveredLedger] = useState(null);
-  const [viewPopup, setViewPopup] = useState(false);
-  const [editPopup, setEditPopup] = useState(false);
+  const [hovered, setHovered]           = useState(null);
+  const [editPopup, setEditPopup]       = useState(false);
+  const [editLedger, setEditLedger]     = useState({ name: '', opening_balance: '', created_at: '' });
   const [activeLedger, setActiveLedger] = useState(null);
-  const [editLedger, setEditLedger] = useState({ name: '', opening_balance: '', created_at: '' });
-  const [viewRange, setViewRange] = useState({ from: '', to: '' });
 
-  const token = localStorage.getItem("accessToken");
-  const [selectedCompany, setSelectedCompany] = useState(() =>
-    JSON.parse(localStorage.getItem("selectedCompany"))
-  );
-  
+  // FY dropdown (All + last 5 years)
+  const fyOptions = ['All', ...Array.from({ length: 5 }).map((_, i) => {
+    const y = new Date().getFullYear() - i;
+    return `${y - 1}-${y}`;
+  })];
 
+  // Load groups & ledgers on mount / company change
   useEffect(() => {
-    const storedCompany = JSON.parse(localStorage.getItem('selectedCompany'));
-    console.log("📦 Raw selectedCompany:", storedCompany);
-    if (storedCompany) {
-      setCompany(storedCompany);
-      fetchGroups(storedCompany.id);
-      fetchLedgers(storedCompany.id);
-    } else {
-      toast.error("No company selected");
+    if (!company.id) {
+      toast.error('No company selected');
+      return;
     }
-  }, []);
+    console.log('🔄 Loading groups & ledgers for company', company.id);
 
-  const fetchGroups = async (companyId) => {
-    try {
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/accounting/account-groups/${companyId}/`, {
-        headers: { Authorization: `Bearer ${token}` },
+    axios.get(`${API_BASE}/account-groups/${company.id}/`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => {
+        console.log('✅ Groups loaded:', r.data);
+        setGroups(r.data);
+      })
+      .catch(e => {
+        console.error('❌ Failed to load groups:', e);
+        toast.error('Failed to load groups');
       });
-      const data = await res.json();
-      setGroups(Array.isArray(data) ? data : []);
-      console.log("✅ Groups:", data);
-    } catch (err) {
-      toast.error("Failed to load account groups");
-    }
+
+    axios.get(`${API_BASE}/ledger/list/${company.id}/`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => {
+        console.log('✅ Ledgers loaded:', r.data);
+        setLedgers(r.data);
+      })
+      .catch(e => {
+        console.error('❌ Failed to load ledgers:', e);
+        toast.error('Failed to load ledgers');
+      });
+  }, [company.id, token]);
+
+  // Create new ledger
+  const createLedger = () => {
+  console.log('➕ Creating ledger:', newLedger);
+  if (!newLedger.name || !selectedGroup) {
+    toast.warn('Enter name & select group');
+    return;
+  }
+
+  const payload = {
+    company_id: company.id,
+    group_name: selectedGroup.group_name,
+    name: newLedger.name,
+    opening_balance: newLedger.opening_balance || 0,
+    opening_balance_type: newLedger.opening_balance_type || "Dr",
+    created_at: newLedger.created_at || new Date().toISOString().slice(0, 10),
+    main_party_type: newLedger.main_party_type || null
   };
 
-  const fetchLedgers = async () => {
-    const token = localStorage.getItem("accessToken");
-    try {
-      const res = await axios.get(
-        `https://virtual-finance-backend.onrender.com/api/accounting/ledger/list/${selectedCompany.id}/`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-  
-      const data = res.data;
-      setLedgers(Array.isArray(data) ? data : []);
-      console.log("📥 Ledgers fetched:", data);
-  
-      data.forEach((ledger) => {
-        console.log(
-          `📊 ${ledger.name} | Balance: ₹${ledger.net_balance} ${ledger.balance_type}`
-        );
+  console.log("📤 Final payload to send:", payload);
+
+  axios.post(`${API_BASE}/ledger/create/`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then(() => {
+      toast.success('✅ Ledger created');
+      setShowCreate(false);
+      return axios.get(`${API_BASE}/ledger/list/${company.id}/`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-    } catch (err) {
-      console.error("❌ Ledger fetch error:", err);
-      toast.error("❌ Failed to load ledgers");
-    }
-  };
-  
-  const groupByNature = () => {
-    const grouped = {};
-    groups.forEach(group => {
-      if (!grouped[group.nature]) grouped[group.nature] = [];
-      grouped[group.nature].push({
-        ...group,
-        children: groups.filter(g => g.parent === group.id),
-        ledgers: ledgers.filter(l => l.group_id === group.id)
-      });
+    })
+    .then(r => {
+      console.log('✅ After create, ledgers:', r.data);
+      setLedgers(r.data);
+    })
+    .catch(e => {
+      console.error('❌ Ledger creation failed:', e);
+      toast.error('Ledger creation failed');
     });
-    return grouped;
-  };
+};
 
-  const handleLedgerCreate = async () => {
-    const payload = {
-      company_id: company.id,
-      group_name: selectedGroup.group_name,
-      name: newLedger.name,
-      opening_balance: parseFloat(newLedger.opening_balance || 0),
-      opening_balance_type: newLedger.opening_balance_type,
-      created_at: newLedger.created_at
-    };
-    console.log("📤 Creating Ledger:", payload);
-    try {
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/accounting/ledger/create/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success("Ledger created successfully");
-        setShowLedgerPopup(false);
-        fetchLedgers(company.id);
-      } else {
-        toast.error(data.error || "Ledger creation failed");
-      }
-    } catch (err) {
-      toast.error("Something went wrong");
-    }
-  };
 
-  const handleEditSave = async () => {
-    const payload = {
-      name: editLedger.name,
-      opening_balance: parseFloat(editLedger.opening_balance || 0),
-      created_at: editLedger.created_at
-    };
-    console.log("✏️ Updating Ledger:", payload);
-    try {
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/accounting/ledger/update/${activeLedger.id}/`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        toast.success("Ledger updated");
+  // Save edits
+  const saveEdit = () => {
+    console.log('✏️ Saving edits for ledger', activeLedger?.id, editLedger);
+    axios.put(`${API_BASE}/ledger/update/${activeLedger.id}/`, editLedger, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(() => {
+        toast.info('Ledger updated');
         setEditPopup(false);
-        fetchLedgers(company.id);
-      } else {
-        toast.error("Update failed");
-      }
-    } catch (err) {
-      toast.error("Something went wrong");
-    }
-  };
-
-  const handleDeleteLedger = async () => {
-    if (!activeLedger) return;
-    console.log("🗑️ Deleting ledger:", activeLedger);
-    try {
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/accounting/ledger/delete/${activeLedger.id}/`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        return axios.get(`${API_BASE}/ledger/list/${company.id}/`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      })
+      .then(r => {
+        console.log('✅ After edit, ledgers:', r.data);
+        setLedgers(r.data);
+      })
+      .catch(e => {
+        console.error('❌ Update failed:', e);
+        toast.error('Update failed');
       });
-      if (res.ok) {
-        toast.success("Ledger deleted");
-        setViewPopup(false);
-        fetchLedgers(company.id);
-      } else {
-        toast.error("Failed to delete ledger");
-      }
-    } catch (err) {
-      toast.error("Error deleting ledger");
-    }
   };
 
-  // 📄 Function to generate and download a simple PDF of ledger info
-  const handleDownloadPDF = () => {
-    if (!activeLedger) return;
-    const doc = new jsPDF();
-    doc.text(`Ledger: ${activeLedger.name}`, 10, 10);
-    doc.text(`Opening Balance: ₹${activeLedger.opening_balance}`, 10, 20);
-    doc.text(`Created At: ${activeLedger.created_at}`, 10, 30);
-    doc.save(`${activeLedger.name}_ledger.pdf`);
-    console.log("📄 Downloading PDF for ledger:", activeLedger);
+  // Delete a ledger
+  const deleteLedger = id => {
+    console.log('🗑️ Deleting ledger:', id);
+    axios.delete(`${API_BASE}/ledger/delete/${id}/`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(() => {
+        toast.success('Ledger deleted');
+        return axios.get(`${API_BASE}/ledger/list/${company.id}/`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      })
+      .then(r => {
+        console.log('✅ After delete, ledgers:', r.data);
+        setLedgers(r.data);
+      })
+      .catch(e => {
+        console.error('❌ Delete failed:', e);
+        toast.error('Delete failed');
+      });
   };
 
-  const renderGroupSection = (title, groups) => (
-    <div style={{ marginBottom: '32px' }}>
-      <h3 style={{ background: '#003366', color: 'white', padding: '10px 16px', borderRadius: '6px' }}>
-        {title.toUpperCase()}
-      </h3>
-      <table style={{ width: '100%', marginTop: '8px', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ background: '#f0f0f0', textAlign: 'left' }}>
-            <th style={{ padding: '8px' }}>Account Group / Ledger</th>
-            <th style={{ padding: '8px', textAlign: 'right' }}>Balance (₹)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {groups.map(group => (
-            <React.Fragment key={group.id}>
-              <tr
-                style={{ background: '#fff', fontWeight: 'bold', cursor: 'pointer' }}
-                onClick={() => {
-                  setSelectedGroup(group);
-                  setShowLedgerPopup(true);
-                }}
-              >
-                <td style={{ padding: '8px' }}>{group.group_name}</td>
-                <td style={{ padding: '8px', textAlign: 'right' }}>--</td>
-              </tr>
-              {group.ledgers.map(ledger => {
-                const balance = ledger.net_balance;
-                const type = ledger.balance_type;
-  
-                console.log(`📊 ${ledger.name} | Balance: ₹${balance} ${type}`);
-  
-                return (
-                  <tr
-                    key={ledger.id}
-                    style={{ background: '#fcfcfc' }}
-                    onMouseEnter={() => setHoveredLedger(ledger)}
-                    onMouseLeave={() => setHoveredLedger(null)}
-                  >
-                    <td style={{ padding: '8px 8px 8px 24px', position: 'relative' }}>
-                      • {ledger.name.replace(' Ledger', '')}
-                      {hoveredLedger?.id === ledger.id && (
-                        <span
-                          style={{
-                            position: 'absolute',
-                            right: 5,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            display: 'flex',
-                            gap: '6px',
-                          }}
-                        >
-                          <button
-                            onClick={() => {
-                              setActiveLedger(ledger);
-                              setViewPopup(true);
-                            }}
-                          >
-                            👁️
-                          </button>
-                          <button
-                            onClick={() => {
-                              setActiveLedger(ledger);
-                              setEditLedger({
-                                name: ledger.name,
-                                opening_balance: ledger.opening_balance,
-                                created_at: ledger.created_at.split('T')[0],
-                              });
-                              setEditPopup(true);
-                            }}
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => {
-                              setActiveLedger(ledger);
-                              handleDeleteLedger();
-                            }}
-                          >
-                            🗑️
-                          </button>
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>
-                      ₹{balance !== undefined ? balance.toFixed(2) : '--'} {type || ''}
-                    </td>
-                  </tr>
-                );
-              })}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
+  // Download PDF for activeLedger
+  const downloadPDF = (ledger) => {
+  if (!ledger || !token) {
+    toast.warn("⚠️ Ledger not selected or session expired.");
+    return;
+  }
+
+  console.log(`📥 Downloading PDF for Ledger: ${ledger.name} (ID: ${ledger.id})`);
+
+  axios.get(`${API_BASE}/ledger/pdf/${ledger.id}/`, {
+    headers: { Authorization: `Bearer ${token}` },
+    responseType: 'blob'
+  })
+    .then(res => {
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${ledger.name.replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`✅ Downloaded: ${ledger.name}`);
+    })
+    .catch(e => {
+      console.error('❌ PDF download failed:', e);
+      toast.error('Download failed');
+    });
+};
+
+
+
+  // Filtering & grouping
+  const filtered = ledgers.filter(l =>
+    (!selectedGroup || l.group_id === selectedGroup.id) &&
+    l.name.toLowerCase().includes(searchText.toLowerCase()) &&
+    (selectedFY === 'All' ||
+      new Date(l.created_at).getFullYear() === +selectedFY.split('-')[1])
   );
-  
-
-  const natureGroups = groupByNature();
-  const orderedNature = ['Asset', 'Liability', 'Income', 'Expense', 'Equity'];
+  const grouped = filtered.reduce((acc, l) => {
+    acc[l.nature] = acc[l.nature] || {};
+    acc[l.nature][l.group_name] = acc[l.nature][l.group_name] || [];
+    acc[l.nature][l.group_name].push(l);
+    return acc;
+  }, {});
 
   return (
-    <div style={{ padding: '24px' }}>
-      <h2 style={{ color: '#003366', marginBottom: '16px' }}>📘 Ledger Chart of Accounts</h2>
-      {orderedNature.map(nature => (
-        natureGroups[nature] ? renderGroupSection(nature, natureGroups[nature]) : null
+    <div className="ledger-container">
+      <h2>📘 Ledgers</h2>
+      <div className="selection-panel">
+        {/* Group Select */}
+        <div>
+          <label>Group</label>
+          <select onChange={e => setSelectedGroup(
+            groups.find(g => g.id === +e.target.value) || null
+          )}>
+            <option value="">All</option>
+            {groups.map(g =>
+              <option key={g.id} value={g.id}>{g.group_name}</option>
+            )}
+          </select>
+        </div>
+
+        {/* Search */}
+        <div>
+          <label>Search</label>
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchText}
+            onChange={e => {
+              console.log('🔍 Search:', e.target.value);
+              setSearchText(e.target.value);
+            }}
+          />
+        </div>
+
+        {/* FY */}
+        <div>
+          <label>FY</label>
+          <select
+            value={selectedFY}
+            onChange={e => {
+              console.log('📆 FY:', e.target.value);
+              setSelectedFY(e.target.value);
+            }}
+          >
+            {fyOptions.map(fy =>
+              <option key={fy}>{fy}</option>
+            )}
+          </select>
+        </div>
+
+        {/* Buttons */}
+        <div className="toolbar-buttons">
+          <button
+            className="btn-new"
+            onClick={() => { console.log('+ New Ledger'); setShowCreate(true); }}
+          >
+            + New Ledger
+          </button>
+          
+          <button
+            className="btn-download"
+            onClick={downloadPDF}
+          >
+            Download
+          </button>
+        </div>
+      </div>
+
+      {/* Ledger Tiles */}
+            {Object.entries(grouped).map(([nat, subs]) => (
+        <div key={nat} className="main-group">
+          <h3>{nat}</h3>
+          {Object.entries(subs).map(([sub, items]) => (
+            <div key={sub} className="sub-group">
+              <h4>{sub}</h4>
+              <div className="ledger-list">
+                {items.map(l => {
+                  const isAsset = l.nature === 'Asset';
+                  const typ     = l.balance_type?.toLowerCase();
+                  const incoming =
+                    (isAsset && typ === 'dr') ||
+                    (!isAsset && typ === 'cr');
+
+                  return (
+                    <Link
+                      key={l.id}
+                      to={`/ledger-info/${l.id}`}
+                      className="ledger-card clickable"
+                      onClick={() => {
+    console.log("➡️ Navigating to ledger detail page for:");
+    console.log("🆔 ID:", l.id);
+    console.log("📘 Name:", l.name);
+    // Optional: Save to localStorage if you want to use later
+    localStorage.setItem("activeLedgerId", l.id);
+    localStorage.setItem("activeLedgerName", l.name);
+  }}
+  onMouseEnter={() => setHovered(l.id)}
+  onMouseLeave={() => setHovered(null)}
+>
+                      <h5>{l.name}</h5>
+                      <p className={incoming ? 'balance-incoming' : 'balance-outgoing'}>
+                        ₹{l.net_balance.toFixed(2)} ({l.balance_type})
+                      </p>
+
+                      {/* ℹ️ Info Button */}
+                      <span
+                        className="info-btn"
+                        data-tooltip={
+                          isAsset
+                            ? 'Dr → increases balance\nCr → decreases balance'
+                            : 'Dr → decreases balance\nCr → increases balance'
+                        }
+                      >
+                        i
+                      </span>
+
+                      {/* Hover actions */}
+                      {hovered === l.id && (
+                        <div className="card-actions">
+                          <button onClick={e => {
+                            e.preventDefault();
+                            console.log('✏️ Edit ledger', l.id);
+                            setActiveLedger(l);
+                            setEditLedger({
+                              name: l.name,
+                              opening_balance: l.opening_balance,
+                              created_at: l.created_at.split('T')[0],
+                            });
+                            setEditPopup(true);
+                          }}>✏️</button>
+                          <button onClick={e => {
+                            e.preventDefault();
+                            console.log('🗑️ Delete ledger', l.id);
+                            deleteLedger(l.id);
+                          }}>🗑️</button>
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
       ))}
 
-      {/* View popup */}
-      {viewPopup && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', width: '400px' }}>
-            <h3>Ledger View: {activeLedger?.name}</h3>
-            <label>From</label>
-            <input type="date" value={viewRange.from} onChange={(e) => setViewRange({ ...viewRange, from: e.target.value })} style={{ width: '100%', marginBottom: '10px' }} />
-            <label>To</label>
-            <input type="date" value={viewRange.to} onChange={(e) => setViewRange({ ...viewRange, to: e.target.value })} style={{ width: '100%', marginBottom: '10px' }} />
-            <button onClick={handleDownloadPDF}>Download PDF</button>
-            <button onClick={handleDeleteLedger} style={{ marginLeft: '10px' }}>Delete</button>
-            <button onClick={() => setViewPopup(false)} style={{ marginLeft: '10px' }}>Close</button>
+      {/* Create Popup */}
+    {showCreate && (
+  <div className="modal-overlay">
+    <div className="modal">
+      <h3>New Ledger</h3>
+
+      <label>
+        Name
+        <input
+          value={newLedger.name}
+          onChange={e => {
+            console.log('✏️ New name:', e.target.value);
+            setNewLedger({ ...newLedger, name: e.target.value });
+          }}
+        />
+      </label>
+
+      <label>
+        Group
+        <select
+          onChange={e => {
+            const grp = groups.find(g => g.id === +e.target.value);
+            console.log('👥 New group selected:', grp);
+            setSelectedGroup(grp);
+            setNewLedger(prev => ({ ...prev, group_name: grp?.group_name }));
+          }}
+        >
+          <option value="">Select</option>
+          {groups.map(g => (
+            <option key={g.id} value={g.id}>{g.group_name}</option>
+          ))}
+        </select>
+      </label>
+
+      <label>
+        Opening Balance
+        <input
+          type="number"
+          value={newLedger.opening_balance}
+          onChange={e => {
+            console.log('💰 Opening balance:', e.target.value);
+            setNewLedger({ ...newLedger, opening_balance: e.target.value });
+          }}
+        />
+      </label>
+
+      <label>
+        Type
+        <select
+          value={newLedger.opening_balance_type}
+          onChange={e => {
+            console.log('📈 Balance type:', e.target.value);
+            setNewLedger({ ...newLedger, opening_balance_type: e.target.value });
+          }}
+        >
+          <option value="Dr">Dr</option>
+          <option value="Cr">Cr</option>
+        </select>
+      </label>
+
+      <label>
+        Date
+        <input
+          type="date"
+          value={newLedger.created_at}
+          onChange={e => {
+            console.log('📅 Creation date:', e.target.value);
+            setNewLedger({ ...newLedger, created_at: e.target.value });
+          }}
+        />
+      </label>
+
+      <label>
+        Main Party Type (optional)
+        <select
+          value={newLedger.main_party_type || ''}
+          onChange={e => {
+            console.log('🏷️ Main Party Type:', e.target.value);
+            setNewLedger({ ...newLedger, main_party_type: e.target.value || null });
+          }}
+        >
+          <option value="">None</option>
+          <option value="Customer">Customer</option>
+          <option value="Supplier">Supplier</option>
+          <option value="Other">Other</option>
+        </select>
+      </label>
+
+      <div className="modal-controls">
+        <button onClick={createLedger}>Save</button>
+        <button onClick={() => {
+          console.log('❌ Cancel create');
+          setShowCreate(false);
+        }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+      {/* Edit Popup */}
+      {editPopup && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Edit Ledger</h3>
+            <label>
+              Name
+              <input
+                value={editLedger.name}
+                onChange={e => {
+                  console.log('✏️ Edit name:', e.target.value);
+                  setEditLedger({ ...editLedger, name: e.target.value });
+                }}
+              />
+            </label>
+            <label>
+              Opening Balance
+              <input
+                type="number"
+                value={editLedger.opening_balance}
+                onChange={e => {
+                  console.log('💰 Edit balance:', e.target.value);
+                  setEditLedger({ ...editLedger, opening_balance: e.target.value });
+                }}
+              />
+            </label>
+            <label>
+              Date
+              <input
+                type="date"
+                value={editLedger.created_at}
+                onChange={e => {
+                  console.log('📅 Edit date:', e.target.value);
+                  setEditLedger({ ...editLedger, created_at: e.target.value });
+                }}
+              />
+            </label>
+            <div className="modal-controls">
+              <button onClick={saveEdit}>Save</button>
+              <button onClick={() => {
+                console.log('❌ Cancel edit');
+                setEditPopup(false);
+              }}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

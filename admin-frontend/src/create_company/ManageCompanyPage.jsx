@@ -17,7 +17,7 @@ function ManageCompanyPage() {
 
       try {
         const response = await axios.get(
-          `https://virtual-finance-backend.onrender.com/user_mgmt/company/${companyId}/`,
+          `http://127.0.0.1:8000/user_mgmt/company/${companyId}/`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

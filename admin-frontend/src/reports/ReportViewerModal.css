@@ -1,0 +1,110 @@
+:root {
+  --erp-bg: #fff;
+  --erp-text-primary: #2c3e50;
+  --erp-accent: #2e86ab;
+  --erp-accent-dark: #1b4f72;
+  --erp-font: Arial, sans-serif;
+}
+
+/* Backdrop overlay */
+.viewer-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+/* Modal container – enlarged */
+.viewer-modal-container {
+  background: var(--erp-bg);
+  color: var(--erp-text-primary);
+  font-family: var(--erp-font);
+  width: 95%;
+  max-width: 1000px;
+  max-height: 95%;
+  overflow-y: auto;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  position: relative;
+}
+
+/* Modal header (you can keep a small header if desired) */
+.viewer-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* Modal title (optional if you want a header) */
+.viewer-modal-header h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  color: var(--erp-accent);
+}
+
+/* Close button – small circle pinned */
+.viewer-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: var(--erp-accent);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  z-index: 2;
+}
+.viewer-modal-close:hover {
+  background: var(--erp-accent-dark);
+}
+
+/* Modal body */
+.viewer-modal-body {
+  padding-top: 0;
+}
+
+/* ==== Global Print Overrides ==== */
+@media print {
+  /* Hide everything on screen */
+  body * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Show only the report container (.generic-report inside the modal) */
+  .viewer-modal-container,
+  .viewer-modal-container *,
+  .generic-report,
+  .generic-report * {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Stretch container full page */
+  .viewer-modal-container {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  @page {
+    margin: 0;
+  }
+}

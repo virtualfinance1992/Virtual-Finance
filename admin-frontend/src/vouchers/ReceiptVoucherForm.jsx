@@ -1,208 +1,337 @@
+// 📘 ReceiptVoucherForm.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import CustomerForm from '../customer_mgmt/CustomerForm';
+import axios from 'axios';
 
-const ReceiptVoucherForm = ({ onClose, companyId: passedCompanyId }) => {
-  const companyId = passedCompanyId || JSON.parse(localStorage.getItem("selectedCompany"))?.id;
-
+const ReceiptVoucherForm = ({ onClose, companyId }) => {
+  // customer dropdown
   const [customer, setCustomer] = useState('');
-  const [voucherDate, setVoucherDate] = useState(new Date().toISOString().split('T')[0]);
+  const [customerLedger, setCustomerLedger] = useState(null);
   const [customerList, setCustomerList] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+
+  // payment account dropdown
+  const [ledgerList, setLedgerList] = useState([]);
+  const [filteredLedgers, setFilteredLedgers] = useState([]);
+  const [showLedgerDropdown, setShowLedgerDropdown] = useState(false);
+  const [paymentLedgerId, setPaymentLedgerId] = useState(null);
+  const [paymentMode, setPaymentMode] = useState('');
+
+  // form fields
+  const [voucherDate, setVoucherDate] = useState(new Date().toISOString().split('T')[0]);
   const [amount, setAmount] = useState(0);
-  const [paymentMode, setPaymentMode] = useState('UPI');
   const [notes, setNotes] = useState('');
   const [isAgainstSale, setIsAgainstSale] = useState(false);
-  const [showCustomerForm, setShowCustomerForm] = useState(false);
+
+  // unpaid sales to apply against
+  const [unpaidVouchers, setUnpaidVouchers] = useState([]);
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
+
   const componentRef = useRef();
 
+  // ─── fetch all ledgers once ────────────────────────────────────────────────
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const token = localStorage.getItem('accessToken');
-        const res = await fetch(`https://virtual-finance-backend.onrender.com/api/customers/${companyId}/`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        setCustomerList(data.map(c => c.name));
-      } catch (err) {
-        console.error('❌ Error fetching customers:', err);
-      }
-    };
-
-    if (companyId) {
-      fetchCustomers();
-    }
+    const token = localStorage.getItem('accessToken');
+    console.log('🔄 Fetching all ledgers for dropdowns...');
+    axios.get(`http://127.0.0.1:8000/api/accounting/ledger/list/${companyId}/`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then(res => {
+      console.log('✅ Raw ledgers:', res.data);
+      // customers = is_customer or any Asset
+      const custs = res.data.filter(l => l.is_customer || l.nature === 'Asset');
+      console.log('👥 Customer candidates:', custs);
+      setCustomerList(custs);
+      setFilteredCustomers(custs);
+      // payments = cash/bank
+      const pays = res.data.filter(l =>
+        l.group_name.toLowerCase().includes('cash') ||
+        l.group_name.toLowerCase().includes('bank')
+      );
+      console.log('🏦 Payment account candidates:', pays);
+      setLedgerList(pays);
+      setFilteredLedgers(pays);
+    })
+    .catch(err => console.error('❌ Fetch error:', err));
   }, [companyId]);
 
+  // ─── fetch unpaid sales when customer or toggle changes ─────────────────────
+  useEffect(() => {
+    if (!customerLedger) return;
+    const type = 'SALES';
+    console.log(`🔄 Fetching ALL unpaid ${type} vouchers for customer ${customerLedger.id}`);
+    axios.get(
+      `http://127.0.0.1:8000/api/reports/${companyId}/customer-unpaid/`,
+      {
+        params: { voucher_type: type, customer_id: customerLedger.id },
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` }
+      }
+    )
+    .then(res => {
+      console.log('✅ Unpaid sales vouchers:', res.data);
+      setUnpaidVouchers(res.data);
+    })
+    .catch(err => console.error('❌ Error fetching unpaid vouchers:', err));
+  }, [companyId, customerLedger, isAgainstSale]);
+
+  // ─── when user picks one, default amount to its outstanding ───────────────
+  const handleVoucherSelect = id => {
+    const v = unpaidVouchers.find(u => u.id === +id);
+    console.log('👆 Selected unpaid voucher:', v);
+    setSelectedVoucher(v);
+    setAmount(v.outstanding);
+  };
+
+  // ─── Save Receipt ───────────────────────────────────────────────────────────
   const handleSaveReceipt = async () => {
-    const token = localStorage.getItem('accessToken');
-  
+    if (!customerLedger) return alert('Select a customer first');
+    if (!paymentLedgerId) return alert('Select a Cash/Bank account');
+    if (!amount || amount <= 0) return alert('Enter a valid receipt amount');
+
     const payload = {
       company: companyId,
       date: voucherDate,
-      voucher_type: 'RECEIPT',
-      reference: `Receipt from ${customer}`,
-      party: customer,
+      reference: `Receipt from ${customerLedger.name}`,
       payment_mode: paymentMode,
+      entries: [
+        { ledger: paymentLedgerId, is_debit: true,  amount },
+        { ledger: customerLedger.id, is_debit: false, amount }
+      ],
       notes,
       against_sale: isAgainstSale,
-      items: [{ description: 'Receipt', amount: amount, notes }],
-      entries: [
-        { ledger: null, is_debit: false, amount: amount.toFixed(2) },  // ✅ lowercase
-        { ledger: null, is_debit: true, amount: amount.toFixed(2) }
-      ]
+      ...(selectedVoucher && { against_voucher: selectedVoucher.id })
     };
-  
-    console.log("📦 Submitting Receipt Voucher Payload:", payload);
-  
+    console.log('🔃 Sending Receipt Payload:', payload);
+
     try {
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/vouchers/receipt/${companyId}/create/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-  
-      if (!res.ok) throw new Error('Receipt creation failed');
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/vouchers/receipt/${companyId}/create/`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+      if (!res.ok) {
+        console.error('❌ Save error payload:', await res.text());
+        return alert('❌ Failed to save receipt.');
+      }
       const data = await res.json();
-      console.log("✅ Receipt Voucher Saved:", data);
-      alert(`✅ Receipt saved successfully. Voucher No: ${data.voucher_number}`);
+      console.log('✅ Receipt saved:', data);
+      alert(`✅ Receipt recorded! Voucher No: ${data.voucher_number}`);
       onClose();
     } catch (err) {
-      console.error('❌ Error saving receipt:', err);
+      console.error('🔥 Unexpected error:', err);
       alert('❌ Failed to save receipt.');
     }
   };
-  
 
-  const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
-    documentTitle: `Receipt_${voucherDate}`,
-  })
+  const handlePrint = useReactToPrint({ content: () => componentRef.current });
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '32px', background: '#fff', borderRadius: '16px', boxShadow: '0 0 16px rgba(0,0,0,0.2)', position: 'relative' }}>
-      <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', fontSize: '20px' }}>✖</button>
+    <div style={{
+      maxWidth:'800px', margin:'0 auto', padding:'32px',
+      background:'#fff', borderRadius:'16px',
+      boxShadow:'0 0 16px rgba(0,0,0,0.2)', position:'relative'
+    }}>
+      <button onClick={onClose}
+        style={{
+          position:'absolute', top:16, right:16,
+          background:'transparent', border:'none', fontSize:'20px'
+        }}>✖</button>
       <div ref={componentRef}>
-        <h2 style={{ textAlign: 'center', marginBottom: '24px', color: '#003366' }}>💰 Receipt Voucher</h2>
+        <h2 style={{
+          textAlign:'center', marginBottom:'24px', color:'#003366'
+        }}>💰 Receipt Voucher</h2>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 2 }}>
-            <label>Customer:</label>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <div style={{ flex: 2, position: 'relative' }}>
-                <input
-                  type="text"
-                  value={customer}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setCustomer(val);
-                    setFilteredCustomers(customerList.filter(c => c.toLowerCase().includes(val.toLowerCase())));
-                    setShowDropdown(true);
-                  }}
-                  onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-                  placeholder="Enter or select customer"
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
-                />
-                {showDropdown && filteredCustomers.length > 0 && (
-                  <ul style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#fff', border: '1px solid #ccc', zIndex: 1000, maxHeight: '140px', overflowY: 'auto', listStyle: 'none', margin: 0, padding: 0 }}>
-                    {filteredCustomers.map((name, index) => (
-                      <li key={index} onMouseDown={() => setCustomer(name)} style={{ padding: '8px', cursor: 'pointer' }}>{name}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <button onClick={() => setShowCustomerForm(true)} style={{ background: '#28a745', color: '#fff', padding: '10px 14px', borderRadius: '6px', border: 'none' }}>+ New</button>
-            </div>
-          </div>
-
-          <div style={{ flex: 1 }}>
-            <label>Voucher #:</label>
+        {/* Customer dropdown */}
+        <div style={{ marginBottom:'20px' }}>
+          <label>Customer:</label>
+          <div style={{ position:'relative' }}>
             <input
               type="text"
-              value="Auto-generated"
-              readOnly
-              style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', backgroundColor: '#f5f5f5' }}
+              value={customer}
+              placeholder="Start typing customer name..."
+              onChange={e => {
+                const v = e.target.value;
+                setCustomer(v);
+                setFilteredCustomers(
+                  customerList.filter(l => l.name.toLowerCase().includes(v.toLowerCase()))
+                );
+                setShowCustomerDropdown(true);
+              }}
+              onFocus={()=>{ setFilteredCustomers(customerList); setShowCustomerDropdown(true) }}
+              onBlur={()=>setTimeout(()=>setShowCustomerDropdown(false),150)}
+              style={{
+                width:'100%', padding:'10px',
+                borderRadius:'6px', border:'1px solid #ccc'
+              }}
             />
-            <label style={{ marginTop: '12px', display: 'block' }}>Date:</label>
+            {showCustomerDropdown && filteredCustomers.length>0 && (
+              <ul style={{
+                position:'absolute', top:'100%', left:0, right:0,
+                background:'#fff', border:'1px solid #ccc',
+                zIndex:1000, maxHeight:'140px', overflowY:'auto',
+                listStyle:'none', margin:0, padding:0
+              }}>
+                {filteredCustomers.map((l,i)=>(
+                  <li key={i}
+                      onMouseDown={()=> {
+                        console.log('👆 Selected customer ledger:', l);
+                        setCustomer(l.name);
+                        setCustomerLedger(l);
+                        setShowCustomerDropdown(false);
+                        setSelectedVoucher(null);
+                        setAmount(0);
+                      }}
+                      style={{ padding:'8px', cursor:'pointer' }}
+                  >{l.name}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {customerLedger && (
+            <div style={{ marginTop:'8px', fontStyle:'italic' }}>
+              Balance: ₹{customerLedger.net_balance.toFixed(2)} ({customerLedger.balance_type})
+            </div>
+          )}
+        </div>
+
+        {/* Date */}
+        <div style={{ marginBottom:'20px' }}>
+          <label>Date:</label>
+          <input type="date"
+            value={voucherDate}
+            onChange={e=>setVoucherDate(e.target.value)}
+            style={{
+              width:'auto', padding:'8px',
+              borderRadius:'6px', border:'1px solid #ccc'
+            }}
+          />
+        </div>
+
+        {/* Payment acct */}
+        <div style={{ marginBottom:'20px' }}>
+          <label>Payment Account (Cash/Bank):</label>
+          <div style={{ position:'relative' }}>
             <input
-              type="date"
-              value={voucherDate}
-              onChange={(e) => setVoucherDate(e.target.value)}
-              style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
+              type="text"
+              value={paymentMode}
+              placeholder="Select cash or bank account"
+              readOnly
+              onClick={()=>setShowLedgerDropdown(true)}
+              style={{
+                width:'100%', padding:'10px',
+                borderRadius:'6px', border:'1px solid #ccc',
+                background:'#fafafa'
+              }}
             />
+            {showLedgerDropdown && filteredLedgers.length>0 && (
+              <ul style={{
+                position:'absolute', top:'100%', left:0, right:0,
+                background:'#fff', border:'1px solid #ccc',
+                zIndex:1000, maxHeight:'140px', overflowY:'auto',
+                listStyle:'none', margin:0, padding:0
+              }}>
+                {filteredLedgers.map((l,i)=>(
+                  <li key={i}
+                      onMouseDown={()=> {
+                        const mode = l.group_name.toLowerCase().includes('cash')
+                          ? 'cash' : 'bank';
+                        console.log('👆 Selected payment ledger:', l, 'mode=', mode);
+                        setPaymentLedgerId(l.id);
+                        setPaymentMode(mode);
+                        setShowLedgerDropdown(false);
+                      }}
+                      style={{ padding:'8px', cursor:'pointer' }}
+                  >{l.name}</li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 
-        <div style={{ marginTop: '20px' }}>
-          <label>Receipt Mode:</label>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
-            {['UPI', 'Online', 'Cash', 'Cheque'].map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setPaymentMode(mode)}
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: '6px',
-                  background: paymentMode === mode ? '#003366' : '#ccc',
-                  color: paymentMode === mode ? '#fff' : '#333',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
+        {/* Against Sale */}
+        <div style={{ marginBottom:'20px' }}>
+          <label>
+            <input type="checkbox"
+                   checked={isAgainstSale}
+                   onChange={e=>setIsAgainstSale(e.target.checked)}
+                   style={{ marginRight:'8px' }}
+            />
+            Against Sale
+          </label>
         </div>
 
-        <div style={{ marginTop: '20px' }}>
+        {/* Unpaid sales dropdown */}
+        {customerLedger && unpaidVouchers.length>0 && (
+          <div style={{ marginBottom:'20px' }}>
+            <label>Apply Against:</label>
+            <select
+              value={selectedVoucher?.id||''}
+              onChange={e=>handleVoucherSelect(e.target.value)}
+              style={{
+                width:'100%', padding:'10px',
+                borderRadius:'6px', border:'1px solid #ccc'
+              }}
+            >
+              <option value="">-- select voucher --</option>
+              {unpaidVouchers.map(u=>(
+                <option key={u.id} value={u.id}>
+                  [{u.voucher_type}] {u.voucher_number} — ₹{u.outstanding.toFixed(2)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Amount & Notes */}
+        <div style={{ marginBottom:'20px' }}>
           <label>Amount:</label>
-          <input type="number" value={amount} onChange={(e) => setAmount(parseFloat(e.target.value) || 0)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
+          <input type="number"
+            value={amount}
+            onChange={e=>setAmount(parseFloat(e.target.value)||0)}
+            style={{
+              width:'100%', padding:'10px',
+              borderRadius:'6px', border:'1px solid #ccc'
+            }}
+          />
         </div>
-
-        <div style={{ marginTop: '20px' }}>
+        <div style={{ marginBottom:'30px' }}>
           <label>Notes:</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
+          <textarea rows={3}
+            value={notes}
+            onChange={e=>setNotes(e.target.value)}
+            style={{
+              width:'100%', padding:'10px',
+              borderRadius:'6px', border:'1px solid #ccc'
+            }}
+          />
         </div>
 
-        <div style={{ marginTop: '20px' }}>
-          <label><input type="checkbox" checked={isAgainstSale} onChange={(e) => setIsAgainstSale(e.target.checked)} style={{ marginRight: '10px' }} /> Receipt Against Sale</label>
-        </div>
-
-        <div style={{ textAlign: 'center', marginTop: '30px' }}>
-          <button onClick={handleSaveReceipt} style={{ padding: '10px 24px', backgroundColor: '#003366', color: '#fff', border: 'none', borderRadius: '6px', marginRight: '10px' }}>Save Receipt</button>
-          <button onClick={handlePrint} style={{ padding: '10px 24px', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '6px' }}>Print</button>
+        {/* Actions */}
+        <div style={{ textAlign:'center' }}>
+          <button onClick={handleSaveReceipt}
+                  style={{
+                    padding:'10px 24px', backgroundColor:'#003366',
+                    color:'#fff', border:'none', borderRadius:'6px',
+                    marginRight:'10px'
+                  }}>
+            Save Receipt
+          </button>
+          <button onClick={handlePrint}
+                  style={{
+                    padding:'10px 24px', backgroundColor:'#007bff',
+                    color:'#fff', border:'none', borderRadius:'6px'
+                  }}>
+            Print
+          </button>
         </div>
       </div>
-
-      {showCustomerForm && (
-        <div
-          style={{
-            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-            backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', zIndex: 9999
-          }}
-          onClick={() => {
-            console.log("🛑 Modal backdrop clicked, closing form.");
-            setShowCustomerForm(false);
-          }}
-        >
-          <div
-            style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '600px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <CustomerForm onClose={() => {
-              console.log("✅ Customer form closed");
-              setShowCustomerForm(false);
-            }} />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

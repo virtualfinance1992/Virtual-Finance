@@ -1,146 +1,211 @@
-// 📘 JournalEntryForm.jsx - Manual Journal Entries
-import React, { useState, useEffect, useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
+// src/vouchers/JournalEntryForm.jsx
+import React, { useState, useEffect } from 'react'
+import axios from 'axios'
 
-const JournalEntryForm = ({ onClose, companyId }) => {
-  const resolvedCompanyId = companyId || JSON.parse(localStorage.getItem("selectedCompany"))?.id;
-  console.log("📌 Resolved companyId for Journal:", resolvedCompanyId);
+const JournalEntryForm = ({ companyId, onClose }) => {
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [description, setDescription] = useState('')
+  const [ledgerList, setLedgerList] = useState([])
+  const [filteredLedgers, setFilteredLedgers] = useState([[], []])
+  const [openDropdown, setOpenDropdown] = useState(null)
+  const [lines, setLines] = useState([
+    { ledger: null, is_debit: true,  amount: '' },
+    { ledger: null, is_debit: false, amount: '' }
+  ])
 
-  const [entries, setEntries] = useState([
-    { ledger_name: '', is_debit: true, amount: '' },
-    { ledger_name: '', is_debit: false, amount: '' }
-  ]);
-  const [voucherNumber, setVoucherNumber] = useState('');
-  const [voucherDate, setVoucherDate] = useState(new Date().toISOString().split('T')[0]);
-  const componentRef = useRef();
-
+  // fetch ledgers once
   useEffect(() => {
-    const fetchVoucherNumber = async () => {
-      try {
-        const res = await fetch(`https://virtual-finance-backend.onrender.com/api/vouchers/journal/next-number/?company_id=${resolvedCompanyId}`);
-        const data = await res.json();
-        setVoucherNumber(data.voucher_number);
-        console.log("🧾 Journal Voucher Number:", data.voucher_number);
-      } catch (err) {
-        console.error("❌ Failed to fetch journal voucher number:", err);
-      }
-    };
+    const token = localStorage.getItem('accessToken')
+    axios
+      .get(`http://localhost:8000/api/accounting/ledger/list/${companyId}/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => {
+        setLedgerList(res.data)
+        // initialize filteredLedgers to full list for both rows
+        setFilteredLedgers([res.data, res.data])
+      })
+      .catch(console.error)
+  }, [companyId])
 
-    if (resolvedCompanyId) {
-      fetchVoucherNumber();
+  // update a single line
+  const updateLine = (idx, field, val) => {
+    const updated = [...lines]
+    if (field === 'amount') {
+      // allow only digits+dot
+      updated[idx][field] = val.replace(/[^\d.]/g, '')
+    } else {
+      updated[idx][field] = val
     }
-  }, [resolvedCompanyId]);
+    setLines(updated)
+  }
 
-  const handleEntryChange = (index, field, value) => {
-    const updated = [...entries];
-    updated[index][field] = field === 'amount' ? parseFloat(value) || 0 : value;
-    setEntries(updated);
-  };
-
-  const addEntry = () => {
-    setEntries([...entries, { ledger_name: '', is_debit: false, amount: '' }]);
-  };
-
-  const removeEntry = (index) => {
-    if (entries.length > 2) {
-      setEntries(entries.filter((_, i) => i !== index));
-    }
-  };
-
+  // build payload & send
   const handleSave = async () => {
-    const totalDebit = entries.filter(e => e.is_debit).reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-    const totalCredit = entries.filter(e => !e.is_debit).reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-
-    if (totalDebit !== totalCredit) {
-      alert('❌ Debit and Credit totals must be equal.');
-      return;
+    const [l1, l2] = lines
+    // validations
+    if (!l1.ledger || !l2.ledger) {
+      return alert('Select both ledgers.')
+    }
+    if (!l1.amount || !l2.amount) {
+      return alert('Enter both amounts.')
+    }
+    if (l1.is_debit === l2.is_debit) {
+      return alert('One line must be Debit, the other Credit.')
+    }
+    if (parseFloat(l1.amount) !== parseFloat(l2.amount)) {
+      return alert('Debit and Credit amounts must match.')
     }
 
     const payload = {
-      company: resolvedCompanyId,
-      voucher_type: 'JOURNAL',
-      voucher_number: voucherNumber,
-      reference: 'Manual journal entry',
-      entries: entries.map(e => ({
-        ledger: null,
-        ledger_name: e.ledger_name,
-        is_debit: e.is_debit,
-        amount: parseFloat(e.amount)
-      })),
-      notes: ''
-    };
-
-    console.log("📦 Submitting Journal Entry Payload:", payload);
+      company: companyId,
+      date,
+      reference: description,
+      entries: lines.map(l => ({
+        ledger: l.ledger.id,
+        is_debit: l.is_debit,
+        amount: parseFloat(l.amount)
+      }))
+    }
+    console.log('🔃 [Journal] Payload →', payload)
 
     try {
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/vouchers/journal/${resolvedCompanyId}/create/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) throw new Error('Failed to save journal entry');
-
-      const data = await res.json();
-      console.log("✅ Journal Entry Saved:", data);
-      alert(`✅ Journal saved. Voucher No: ${data.voucher_number}`);
-      onClose();
+      const token = localStorage.getItem('accessToken')
+      const res = await axios.post(
+        `http://localhost:8000/api/vouchers/journal/${companyId}/create/`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      console.log('✅ [Journal] Response →', res.data)
+      alert(`✅ Journal entry #${res.data.voucher_number} created`)
+      onClose()
     } catch (err) {
-      console.error("❌ Error saving journal:", err);
-      alert("❌ Failed to save journal entry");
+      console.error('❌ [Journal] Error →', err.response?.data || err)
+      alert('❌ Failed to save. Check console.')
     }
-  };
-
-  const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
-    documentTitle: `JournalEntry_${voucherNumber}`,
-  });
+  }
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px', background: '#fff', borderRadius: '16px', boxShadow: '0 0 16px rgba(0,0,0,0.2)', fontFamily: 'Arial' }}>
-      <div ref={componentRef}>
-        <h2 style={{ textAlign: 'center', color: '#003366' }}>📘 Journal Entry</h2>
-        <p style={{ textAlign: 'right' }}><strong>Voucher No:</strong> {voucherNumber}</p>
-        <p style={{ textAlign: 'right' }}>
-          <label><strong>Date:</strong> </label>
-          <input type="date" value={voucherDate} onChange={(e) => setVoucherDate(e.target.value)} style={{ padding: '6px', marginLeft: '10px' }} />
-        </p>
+    <div className="journal-modal">
+      <button className="close-btn" onClick={onClose}>✖</button>
+      <h3 className="title">📝 Journal Entry</h3>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '24px' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f0f0f0' }}>
-              <th style={{ padding: '10px' }}>Ledger Name</th>
-              <th style={{ padding: '10px' }}>Dr / Cr</th>
-              <th style={{ padding: '10px' }}>Amount</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry, index) => (
-              <tr key={index}>
-                <td><input type="text" value={entry.ledger_name} onChange={(e) => handleEntryChange(index, 'ledger_name', e.target.value)} style={{ width: '100%', padding: '8px' }} /></td>
-                <td>
-                  <select value={entry.is_debit ? 'Dr' : 'Cr'} onChange={(e) => handleEntryChange(index, 'is_debit', e.target.value === 'Dr')}>
-                    <option value="Dr">Dr</option>
-                    <option value="Cr">Cr</option>
-                  </select>
-                </td>
-                <td><input type="number" value={entry.amount} onChange={(e) => handleEntryChange(index, 'amount', e.target.value)} style={{ width: '100%', padding: '8px' }} /></td>
-                <td>{index > 1 && <button onClick={() => removeEntry(index)} style={{ color: 'red', fontWeight: 'bold', border: 'none', background: 'transparent' }}>✖</button>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <button onClick={addEntry} style={{ marginTop: '16px', padding: '8px 16px', backgroundColor: '#003366', color: '#fff', border: 'none', borderRadius: '6px' }}>+ Add Entry</button>
-
-        <div style={{ textAlign: 'center', marginTop: '30px' }}>
-          <button onClick={handleSave} style={{ padding: '10px 24px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', marginRight: '10px' }}>Save Journal</button>
-          <button onClick={handlePrint} style={{ padding: '10px 24px', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '6px' }}>Print</button>
-        </div>
+      <div className="field">
+        <label>Date</label>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} />
       </div>
-    </div>
-  );
-};
 
-export default JournalEntryForm;
+      <div className="field">
+        <label>Description</label>
+        <input
+          type="text"
+          value={description}
+          placeholder="Narration"
+          onChange={e => setDescription(e.target.value)}
+        />
+      </div>
+
+      <table className="lines">
+        <thead>
+          <tr>
+            <th>Ledger</th><th>Dr/Cr</th><th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((ln, i) => (
+            <tr key={i}>
+              <td className="ledger-cell">
+                <input
+                  type="text"
+                  placeholder="Search ledger..."
+                  value={ln.ledger?.name||''}
+                  onChange={e => {
+                    updateLine(i, 'ledger', null)
+                    const txt = e.target.value.toLowerCase()
+                    setFilteredLedgers(prev => {
+                      const copy = [...prev]
+                      copy[i] = ledgerList.filter(l=>l.name.toLowerCase().includes(txt))
+                      return copy
+                    })
+                    setOpenDropdown(i)
+                  }}
+                  onBlur={()=>setTimeout(()=>setOpenDropdown(null),150)}
+                />
+                {openDropdown===i && (
+                  <ul className="dropdown">
+                    {filteredLedgers[i].map((l,j)=>(
+                      <li key={j} onMouseDown={()=>updateLine(i,'ledger',l)}>
+                        {l.name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </td>
+              <td>
+                <select
+                  value={ln.is_debit?'Dr':'Cr'}
+                  onChange={e=>updateLine(i,'is_debit',e.target.value==='Dr')}
+                >
+                  <option>Dr</option>
+                  <option>Cr</option>
+                </select>
+              </td>
+              <td>
+                <input
+                  type="text"
+                  placeholder="0.00"
+                  value={ln.amount}
+                  onChange={e=>updateLine(i,'amount',e.target.value)}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <button className="save-btn" onClick={handleSave}>
+        Save Journal Entry
+      </button>
+
+      <style jsx>{`
+        .journal-modal {
+          max-width: 500px; margin: 40px auto;
+          padding: 20px; background: #fff; border-radius: 8px;
+          position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .close-btn {
+          position:absolute; top:12px; right:12px;
+          background:transparent; border:none; font-size:18px; cursor:pointer;
+        }
+        .title { text-align:center; margin-bottom:20px; }
+        .field { margin-bottom:16px; }
+        .field label { display:block; margin-bottom:4px; font-weight:500 }
+        .field input {
+          width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;
+        }
+        .lines { width:100%; border-collapse:collapse; margin-bottom:16px; }
+        .lines th, .lines td { padding:8px; border-bottom:1px solid #eee; }
+        .ledger-cell { position:relative }
+        .ledger-cell input {
+          width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;
+        }
+        .dropdown {
+          position:absolute; top:100%; left:0; right:0;
+          background:#fff; border:1px solid #ccc;
+          max-height:120px; overflow-y:auto; z-index:10; list-style:none; margin:0; padding:0;
+        }
+        .dropdown li {
+          padding:6px 8px; cursor:pointer;
+        }
+        .dropdown li:hover { background:#f0f0f0; }
+        .save-btn {
+          width:100%; padding:10px; background:#28a745; color:#fff;
+          border:none; border-radius:4px; font-size:16px; cursor:pointer;
+        }
+        .save-btn:hover { background:#218838 }
+      `}</style>
+    </div>
+  )
+}
+
+export default JournalEntryForm

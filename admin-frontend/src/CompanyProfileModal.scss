@@ -1,0 +1,88 @@
+.company-profile-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.3);
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.company-profile-modal {
+  background: white;
+  padding: 30px;
+  width: 600px;
+  max-width: 95%;
+  max-height: 90vh; // 🔥 Restrict vertical height
+  overflow-y: auto; // 🔥 Scroll only inside box
+  border-radius: 15px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.company-profile-modal h2 {
+  font-size: 1.5rem;
+  color: #0a4d68;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.company-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.company-profile-form input,
+.company-profile-form textarea {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.company-profile-form textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.profile-button-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.save-btn {
+  background: #4ba9b8;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background: #ddd;
+  color: black;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #333;
+}

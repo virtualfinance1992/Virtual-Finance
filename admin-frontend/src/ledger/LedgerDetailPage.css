@@ -1,0 +1,172 @@
+/* src/ledger/LedgerDetailPage.css */
+.detail-container {
+  padding: 24px;
+  background: var(--bg-light);
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.detail-header h2 {
+  margin: 0;
+  color: var(--text-dark);
+}
+
+.btn-secondary {
+  padding: 8px 12px;
+  border-radius: var(--border-radius);
+  background: #f4f4f4;
+  border: 1px solid #ccc;
+  text-decoration: none;
+  color: var(--text-dark);
+}
+
+.detail-summary {
+  display: flex;
+  gap: 32px;
+  background: #fff;
+  padding: 16px;
+  border-radius: var(--border-radius);
+  margin-bottom: 24px;
+}
+
+.detail-summary div {
+  text-align: center;
+}
+
+.detail-summary strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-dark);
+}
+
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: 0 2px 8px var(--card-shadow);
+}
+
+.detail-table th,
+.detail-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.detail-table th {
+  background: #f9f9f9;
+  text-align: left;
+}
+
+.detail-table tr:last-child td {
+  border-bottom: none;
+}
+
+
+
+/* toolbar */
+.detail-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px; /* :contentReference[oaicite:0]{index=0} */
+}
+.toolbar-buttons {
+  display: flex;
+  gap: 8px;
+}
+.btn-summary {
+  padding: 6px 12px;
+  border-radius: var(--border-radius);
+  background: #f4f4f4;
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
+.search-input {
+  padding: 6px 12px;
+  border-radius: var(--border-radius);
+  border: 1px solid #ccc;
+}
+.btn-new-entry {
+  padding: 6px 12px;
+  border-radius: var(--border-radius);
+  background: var(--primary-color);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+/* summary panel */
+.detail-summary {
+  display: flex;
+  gap: 32px;
+  background: #fff;
+  padding: 16px;
+  border-radius: var(--border-radius);
+  margin-bottom: 24px; /* :contentReference[oaicite:1]{index=1} */
+}
+.detail-summary div {
+  text-align: center;
+}
+
+/* table tweaks */
+.detail-table th.text-right,
+.detail-table td.text-right {
+  text-align: right;
+}
+
+
+/* add inside LedgerDetailPage.css */
+.toolbar-buttons input[type="date"] {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: var(--border-radius);
+  margin-right: 8px;
+}
+.detail-table th, .detail-table td {
+  vertical-align: middle;
+}
+.action-cell a,
+.action-cell button {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 0.9rem;
+}
+
+
+.action-cell button,
+.action-cell a {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-share {
+  /* no extra font-size needed since Share2 size is explicit */
+  padding: 0 6px;
+}
+
+
+.pdf-print-area {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  width: 1000px;
+  background: white;
+  z-index: -1;
+  padding: 24px;
+  color: black;
+}

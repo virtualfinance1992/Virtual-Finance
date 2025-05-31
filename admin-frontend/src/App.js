@@ -10,6 +10,7 @@ import LedgerPage from './ledger/LedgerPage';
 import DashboardPage from './DashboardPage';
 import SalesVoucherForm from './vouchers/SalesVoucherForm';
 import { CompanyProvider } from './CompanyContext';
+import LedgerDetailPage from './ledger/LedgerDetailPage';
 
 
 
@@ -57,6 +58,7 @@ function App() {
             
 
             <Route path="/sales-voucher" element={<SalesVoucherForm />} />
+            <Route path="/ledger-info/:ledgerId" element={<LedgerDetailPage />} />
 
       </Routes>
 

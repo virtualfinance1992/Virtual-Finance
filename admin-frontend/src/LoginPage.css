@@ -1,52 +1,161 @@
-/* LoginPage.css */
+:root {
+  --primary:        #4ba9b8;
+  --primary-dark:   #3a8c96;
+  --bg-light:       #f4f7f9;
+  --text-main:      #2d3e50;
+  --text-mid:       #576574;
+  --border-light:   #d1e8ec;
+  --shadow-light:   rgba(0,0,0,0.1);
+  --shadow-hover:   rgba(0,0,0,0.2);
+}
+
 .login-page {
-  width: 300px;
-  margin: 50px auto;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background-color: #f9f9f9;
+  position: relative;
+  min-height: 100vh;
+  background: var(--bg-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
 }
 
-.login-page h2 {
+/* Pinned top-left logo */
+.top-left-logo {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 80px;
+  opacity: 0.9;
+  z-index: 10;
+}
+
+/* Hologram center */
+.login-page::before {
+  content: "";
+  position: absolute;
+  top: 60%; left: 50%;
+  width: 450px; height: 450px;
+  background: url('./lOGO.png') center/contain no-repeat;
+  opacity: 0.04;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Main card container */
+.login-card {
+  position: relative;
+  z-index: 5;
+  background: #fff;
+  padding: 48px 32px;
+  border-radius: 16px;
+  box-shadow: 0 6px 24px var(--shadow-light);
+  width: 100%;
+  max-width: 400px;
   text-align: center;
+}
+
+/* Centered logo above form */
+.center-logo {
+  width: 150px;
+  margin: -72px auto 24px;
+  background: #fff;
+  border-radius: 50%;
+  padding: 12px;
+  box-shadow: 0 4px 12px var(--shadow-light);
+}
+
+/* Form heading */
+.login-card h2 {
+  margin: 0 0 32px;
+  color: var(--primary-dark);
   font-size: 24px;
-  margin-bottom: 20px;
 }
 
+/* Input fields */
 .form-field {
-  margin-bottom: 15px;
+  margin-bottom: 24px;
+  text-align: left;
 }
-
 .form-field label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  color: var(--text-main);
+  font-weight: 600;
 }
-
 .form-field input {
   width: 100%;
-  padding: 8px;
-  margin-top: 5px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 12px;
+  font-size: 15px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: #fbfcfd;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-field input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(75,169,184,0.2);
+  background: #fff;
 }
 
-button {
+/* Login button */
+.btn-primary {
   width: 100%;
-  padding: 10px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
+  padding: 14px;
+  background: var(--primary);
+  color: #fff;
   font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.btn-primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
 }
 
-button:hover {
-  background-color: #0056b3;
+/* Error popup overlay */
+.error-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
 }
-
-p {
+.error-popup {
+  background: #fff;
+  padding: 24px 32px;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px var(--shadow-light);
+  max-width: 320px;
   text-align: center;
-  color: red;
-  font-weight: bold;
+}
+.error-popup p {
+  margin: 0 0 16px;
+  color: #e74c3c;
+  font-size: 15px;
+}
+.error-popup button {
+  padding: 10px 20px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.error-popup button:hover {
+  background: var(--primary-dark);
+}
+
+/* Responsive */
+@media (max-width: 420px) {
+  .login-card { padding: 32px 24px; max-width: 90vw; }
+  .center-logo { width: 100px; margin-top: -60px; }
 }

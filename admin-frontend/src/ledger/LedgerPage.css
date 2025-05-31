@@ -1,124 +1,325 @@
+/* LedgerPage.css */
+
+:root {
+  --primary-color: #4ba9b8;
+  --primary-dark: #3a8c96;
+  --bg-light: #f4f7f9;
+  --card-bg: #ffffff;
+  --card-shadow: rgba(0, 0, 0, 0.1);
+  --text-dark: #2c3e50;
+  --text-mid: #576574;
+  --border-radius: 24px;
+  --spacing: 16px;
+  --incoming-green: #28a745;
+  --outgoing-red:  #dc3545;
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+/* Container */
 .ledger-container {
-    max-width: 1100px;
-    margin: 40px auto;
-    padding: 20px;
-    background-color: #fefefe;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-    font-family: 'Segoe UI', sans-serif;
-  }
-  
-  .ledger-container h2 {
-    font-size: 28px;
-    margin-bottom: 20px;
-    color: #2c3e50;
-  }
-  
-  .selection-panel {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    margin-bottom: 25px;
-  }
-  
-  .selection-panel div {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .selection-panel label {
-    font-weight: 600;
-    margin-bottom: 5px;
-    color: #34495e;
-  }
-  
-  .selection-panel select {
-    padding: 8px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    font-size: 15px;
-  }
-  
-  .ledger-form {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    margin-bottom: 25px;
-    background: #fafafa;
-    padding: 20px;
-    border-radius: 10px;
-    border: 1px solid #ddd;
-  }
-  
-  .ledger-form input[type="text"],
-  .ledger-form input[type="number"],
-  .ledger-form select {
-    flex: 1;
-    padding: 10px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    font-size: 15px;
-  }
-  
-  .ledger-form label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 500;
-  }
-  
-  .ledger-form button {
-    padding: 10px 20px;
-    background-color: #0077ff;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: 0.3s;
-  }
-  
-  .ledger-form button:hover {
-    background-color: #005fd1;
-  }
-  
-  .success-msg {
-    background-color: #e1f5e1;
-    color: #2e7d32;
-    padding: 12px;
-    border-radius: 6px;
-    margin-bottom: 20px;
-    font-weight: bold;
-    text-align: center;
-  }
-  
+  padding: var(--spacing);
+  background: var(--bg-light);
+  min-height: 100vh;
+}
+
+/* Toolbar / Filters */
+.selection-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing);
+  margin-bottom: var(--spacing);
+}
+.selection-panel {
+  display: flex;
+  align-items: center;    /* vertical align */
+  gap: var(--spacing);
+}
+.selection-panel label {
+  margin-bottom: 4px;
+  color: var(--text-dark);
+  font-size: 0.9rem;
+}
+.selection-panel input,
+.selection-panel select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  width: 200px;          /* consistent width */
+}
+.selection-panel input:focus,
+.selection-panel select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+.toolbar-buttons button {
+  padding: 8px 16px;
+  border-radius: var(--border-radius);
+  border: none;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.toolbar-buttons .btn-new {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+.toolbar-buttons .btn-new:hover {
+  background-color: var(--primary-dark);
+}
+.toolbar-buttons .btn-download {
+  background-color: #fff;
+  color: var(--text-dark);
+  border: 1px solid var(--primary-color);
+}
+.toolbar-buttons .btn-download:hover {
+  background-color: var(--bg-light);
+}
+
+/* Grid layout */
+.ledger-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--spacing);
+}
+
+/* Ledger card */
+.ledger-card {
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 12px var(--card-shadow);
+  padding: var(--spacing);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: float 8s ease-in-out infinite;
+  min-height: 120px;      /* uniform height */
+}
+.ledger-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+.ledger-card h5 {
+  margin: 0 0 8px;
+  color: var(--text-dark);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+
+
+/* Actions on hover */
+.card-actions {
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.ledger-card:hover .card-actions {
+  opacity: 1;
+}
+.card-actions a,
+.card-actions button {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+/* Modals (Create/Edit) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal {
+  background: #fff;
+  border-radius: var(--border-radius);
+  padding: var(--spacing);
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px var(--card-shadow);
+}
+.modal h3 {
+  margin-top: 0;
+  color: var(--primary-dark);
+}
+.modal label {
+  display: block;
+  margin: var(--spacing) 0 4px;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+}
+.modal input,
+.modal select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+}
+.modal-controls {
+  margin-top: var(--spacing);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.modal-controls button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.modal-controls .btn-primary {
+  background: var(--primary-color);
+  color: #fff;
+}
+.modal-controls .btn-primary:hover {
+  background: var(--primary-dark);
+}
+.modal-controls .btn-secondary {
+  background: #e0e0e0;
+  color: var(--text-dark);
+}
+.modal-controls .btn-secondary:hover {
+  background: #cfcfcf;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
   .ledger-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px;
+    grid-template-columns: 1fr;
   }
-  
-  .ledger-card {
-    background: #ffffff;
-    border: 1px solid #e0e0e0;
-    padding: 18px;
-    border-radius: 10px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    transition: transform 0.2s;
+  .selection-panel input,
+  .selection-panel select {
+    width: 100%;
   }
-  
-  .ledger-card:hover {
-    transform: translateY(-3px);
-  }
-  
-  .ledger-card h4 {
-    margin-bottom: 10px;
-    color: #2c3e50;
-  }
-  
-  .ledger-card p {
-    margin: 4px 0;
-    font-size: 15px;
-    color: #555;
-  }
-  
+}
+/* Make the entire toolbar a flex row, and align items to the bottom */
+.selection-panel {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--spacing);
+}
+
+/* Ensure the “+ New” and “Download” live in one row */
+.toolbar-buttons {
+  display: flex;
+  gap: 8px;
+}
+.balance-incoming { color: var(--incoming-green) !important; }
+.balance-outgoing { color: var(--outgoing-red)   !important; }
+
+/* Info button at bottom-right: round, pop-out tooltip, arrow */
+
+/* Enhanced Info-Button */
+.info-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  background: var(--primary-color);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: 
+    background 0.2s ease, 
+    transform 0.2s ease, 
+    box-shadow 0.2s ease;
+  z-index: 2;
+}
+
+/* Slightly bigger, darker hover state */
+.info-btn:hover {
+  background: var(--primary-dark);
+  transform: scale(1.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Tooltip */
+.info-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  right: 50%;
+  transform: translateX(50%) translateY(-8px);
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 3;
+}
+
+/* Tooltip arrow */
+.info-btn::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% - 2px);
+  right: 50%;
+  transform: translateX(50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(0,0,0,0.85);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 3;
+}
+
+.info-btn:hover::after,
+.info-btn:hover::before {
+  opacity: 1;
+}
+
+/* Smaller Info-Button */
+.info-btn {
+  width: 28px;              /* smaller circle */
+  height: 28px;
+  font-size: 0.9rem;        /* smaller “i” */
+  bottom: 8px;              /* move inwards */
+  right: 8px;
+}
+
+/* Adjust the tooltip arrow so it still points nicely */
+.info-btn::before {
+  bottom: calc(100% - 4px);
+  border-width: 5px;        /* slightly smaller arrow */
+}
+
+
+/* LedgerPage.css */
+
+.ledger-card.clickable {
+  text-decoration: none;
+  cursor: pointer;
+  color: inherit;       /* keep text colors */
+}
+
+.ledger-card.clickable {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  position: relative;
+}

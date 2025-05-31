@@ -1,10 +1,8 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import SupplierViewSet
+from django.urls import path
+from .views import create_supplier,SupplierListByCompanyView
 
-router = DefaultRouter()
-router.register(r'suppliers', SupplierViewSet)
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('create/<int:company_id>/', create_supplier, name='create_supplier'),
+    path('list/<int:company_id>/', SupplierListByCompanyView.as_view(), name='supplier-list'),
 ]

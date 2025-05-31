@@ -1,173 +1,202 @@
-// 📘 QuotationForm.jsx - Create and manage customer quotations
-import React, { useState, useEffect, useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
-import CustomerForm from '../customer_mgmt/CustomerForm';
+import React, { useState, useEffect, useRef } from 'react'
+import { useReactToPrint } from 'react-to-print'
+import axios from 'axios'
 
 const QuotationForm = ({ onClose, companyId }) => {
-  const [customer, setCustomer] = useState('');
-  const [quotationNumber, setQuotationNumber] = useState('');
-  const [quotationDate, setQuotationDate] = useState(new Date().toISOString().split('T')[0]);
-  const [customerList, setCustomerList] = useState([]);
-  const [filteredCustomers, setFilteredCustomers] = useState([]);
-  const [items, setItems] = useState([{ name: '', quantity: 1, rate: 0, notes: '' }]);
-  const [notes, setNotes] = useState('');
-  const [showCustomerForm, setShowCustomerForm] = useState(false);
-  const componentRef = useRef();
+  const [customer, setCustomer] = useState('')
+  const [quotationDate, setQuotationDate] = useState(
+    new Date().toISOString().split('T')[0]
+  )
+  const [customerList, setCustomerList] = useState([])
+  const [filteredCustomers, setFilteredCustomers] = useState([])
+  const [items, setItems] = useState([{ name: '', quantity: 1, rate: 0, notes: '' }])
+  const [notes, setNotes] = useState('')
+  const componentRef = useRef()
 
   useEffect(() => {
-    const fetchQuotationNumber = async () => {
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/quotations/next-number/?company_id=${companyId}`);
-      const data = await res.json();
-      setQuotationNumber(data.next_quotation_number);
-    };
-
-    const fetchCustomers = async () => {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/customers/${companyId}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setCustomerList(data.map(c => c.name));
-    };
-
-    fetchQuotationNumber();
-    fetchCustomers();
-  }, [companyId]);
+    // Fetch existing customers
+    const token = localStorage.getItem('accessToken')
+    axios
+      .get(`http://localhost:8000/api/customers/${companyId}/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => setCustomerList(res.data.map(c => c.name)))
+      .catch(() => {})
+  }, [companyId])
 
   const handleItemChange = (index, field, value) => {
-    const updated = [...items];
-    updated[index][field] = field === 'quantity' || field === 'rate' ? parseFloat(value) || 0 : value;
-    setItems(updated);
-  };
+    const arr = [...items]
+    arr[index][field] =
+      field === 'quantity' || field === 'rate' ? parseFloat(value) || 0 : value
+    setItems(arr)
+  }
+  const addItem = () => setItems([...items, { name: '', quantity: 1, rate: 0, notes: '' }])
+  const removeItem = i => setItems(items.filter((_, j) => j !== i))
 
-  const addItem = () => setItems([...items, { name: '', quantity: 1, rate: 0, notes: '' }]);
-  const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
-
-  const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+  const totalAmount = items.reduce((sum, it) => sum + it.quantity * it.rate, 0)
 
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
-    documentTitle: `Quotation_${quotationNumber}`,
-  });
+    documentTitle: 'Quotation'
+  })
 
   const handleSave = async () => {
-    const payload = {
-      company: companyId,
-      customer,
-      quotation_number: quotationNumber,
-      date: quotationDate,
-      items,
-      notes,
-      total: totalAmount,
-    };
+  if (!customer.trim()) {
+    alert('Please enter or select a customer')
+    return
+  }
+  if (items.length === 0) {
+    alert('Add at least one item')
+    return
+  }
 
-    const res = await fetch('/api/quotations/create/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+  // 1) Transform front-end items into serializer-expected shape
+  const payloadItems = items.map(it => {
+    const amount = it.quantity * it.rate
+    return {
+      description: it.name,
+      amount: amount,
+      gst: 0,         // adjust if you have a GST field
+      notes: it.notes
+    }
+  })
+  console.log('🔃 [Quotation] Transformed items →', payloadItems)
 
-    if (!res.ok) return alert('❌ Failed to save quotation');
-    alert('✅ Quotation saved.');
-    onClose();
-  };
+  // 2) Build the final payload
+  const payload = {
+    company: companyId,
+    date: quotationDate,
+    reference: `Quotation for ${customer}`,
+    customer: customer,
+    items: payloadItems
+  }
+  console.log('🔃 [Quotation] Final payload →', payload)
+
+  try {
+    const token = localStorage.getItem('accessToken')
+    const res = await axios.post(
+      `http://localhost:8000/api/vouchers/quotations/${companyId}/create/`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+    console.log('✅ [Quotation] Save response →', res.data)
+    const num = res.data.quotation_number || res.data.id
+    alert(`✅ Quotation saved. Number: ${num}`)
+    onClose()
+  } catch (err) {
+    console.error('❌ [Quotation] Axios error →', err)
+    console.error('❌ [Quotation] Response data →', err.response?.data)
+    alert('❌ Failed to save quotation. See console for details.')
+  }
+}
+
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px', background: '#fff', borderRadius: '16px', boxShadow: '0 0 16px rgba(0,0,0,0.2)', position: 'relative' }}>
-      <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, fontSize: '20px', border: 'none', background: 'transparent' }}>✖</button>
+    <div style={{ maxWidth: 900, margin: '20px auto', padding: 20, background: '#fff', borderRadius: 12, position: 'relative' }}>
+      <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, fontSize: 20, background: 'transparent', border: 'none' }}>
+        ✖
+      </button>
       <div ref={componentRef}>
-        <h2 style={{ textAlign: 'center', color: '#003366', marginBottom: '24px' }}>📄 Quotation</h2>
+        <h2 style={{ textAlign: 'center', marginBottom: 20 }}>📄 Quotation</h2>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-          <div style={{ flex: 2 }}>
-            <label>Customer:</label>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <div style={{ flex: 1, position: 'relative' }}>
-                <input
-                  type="text"
-                  value={customer}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setCustomer(val);
-                    setFilteredCustomers(customerList.filter(c => c.toLowerCase().includes(val.toLowerCase())));
-                  }}
-                  placeholder="Enter or select customer"
-                  style={{ width: '100%', padding: '10px' }}
-                />
-              </div>
-              <button onClick={() => setShowCustomerForm(true)} style={{ padding: '10px 14px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '6px' }}>+ New</button>
-            </div>
-          </div>
-
-          <div style={{ flex: 1 }}>
-            <label>Quotation #:</label>
-            <input type="text" value={quotationNumber} readOnly style={{ width: '100%', padding: '10px', background: '#f0f0f0' }} />
-            <label style={{ marginTop: '10px' }}>Date:</label>
-            <input type="date" value={quotationDate} onChange={(e) => setQuotationDate(e.target.value)} style={{ width: '100%', padding: '10px' }} />
-          </div>
+        {/* Customer */}
+        <div style={{ marginBottom: 20 }}>
+          <label>Customer:</label>
+          <input
+            type="text"
+            value={customer}
+            onChange={e => {
+              const v = e.target.value
+              setCustomer(v)
+              setFilteredCustomers(customerList.filter(c => c.toLowerCase().includes(v.toLowerCase())))
+            }}
+            style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #ccc' }}
+          />
+          {filteredCustomers.length > 0 && (
+            <ul style={{ border: '1px solid #ccc', borderRadius: 6, maxHeight: 120, overflowY: 'auto', margin: 0, padding: 0, listStyle: 'none' }}>
+              {filteredCustomers.map((c, i) => (
+                <li key={i} onMouseDown={() => { setCustomer(c); setFilteredCustomers([]) }} style={{ padding: 8, cursor: 'pointer' }}>
+                  {c}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        <table style={{ width: '100%', marginTop: '20px', borderCollapse: 'collapse' }}>
+        {/* Date */}
+        <div style={{ marginBottom: 20 }}>
+          <label>Date:</label>
+          <input
+            type="date"
+            value={quotationDate}
+            onChange={e => setQuotationDate(e.target.value)}
+            style={{ padding: 8, borderRadius: 6, border: '1px solid #ccc' }}
+          />
+        </div>
+
+        {/* Items */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
           <thead>
-            <tr style={{ backgroundColor: '#f0f0f0' }}>
-              <th style={{ padding: '10px' }}>Item</th>
-              <th>Qty</th>
-              <th>Rate</th>
-              <th>Notes</th>
-              <th></th>
+            <tr style={{ background: '#f0f0f0' }}>
+              <th style={{ padding: 8 }}>Item</th>
+              <th style={{ padding: 8, textAlign: 'right' }}>Qty</th>
+              <th style={{ padding: 8, textAlign: 'right' }}>Rate</th>
+              <th style={{ padding: 8 }}>Notes</th>
+              <th style={{ padding: 8 }}></th>
             </tr>
           </thead>
           <tbody>
-            {items.map((item, index) => (
-              <tr key={index}>
-                <td><input value={item.name} onChange={(e) => handleItemChange(index, 'name', e.target.value)} style={{ width: '100%' }} /></td>
-                <td><input type="number" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} style={{ width: '80px' }} /></td>
-                <td><input type="number" value={item.rate} onChange={(e) => handleItemChange(index, 'rate', e.target.value)} style={{ width: '100px' }} /></td>
-                <td><input value={item.notes} onChange={(e) => handleItemChange(index, 'notes', e.target.value)} style={{ width: '100%' }} /></td>
-                <td><button onClick={() => removeItem(index)} style={{ color: 'red', border: 'none', background: 'transparent' }}>✖</button></td>
+            {items.map((it, idx) => (
+              <tr key={idx}>
+                <td style={{ padding: 8 }}>
+                  <input value={it.name} onChange={e => handleItemChange(idx, 'name', e.target.value)} style={{ width: '100%', padding: 6 }} />
+                </td>
+                <td style={{ padding: 8, textAlign: 'right' }}>
+                  <input type="number" value={it.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} style={{ width: 60, padding: 6, textAlign: 'right' }} />
+                </td>
+                <td style={{ padding: 8, textAlign: 'right' }}>
+                  <input type="number" value={it.rate} onChange={e => handleItemChange(idx, 'rate', e.target.value)} style={{ width: 80, padding: 6, textAlign: 'right' }} />
+                </td>
+                <td style={{ padding: 8 }}>
+                  <input value={it.notes} onChange={e => handleItemChange(idx, 'notes', e.target.value)} style={{ width: '100%', padding: 6 }} />
+                </td>
+                <td style={{ padding: 8, textAlign: 'center' }}>
+                  <button onClick={() => removeItem(idx)} style={{ background: 'transparent', border: 'none', color: 'red' }}>✖</button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+        <button onClick={addItem} style={{ marginBottom: 20, width: '100%', background: '#003366', color: '#fff', padding: 12, border: 'none', borderRadius: 6 }}>
+          + Add Item
+        </button>
 
-        <button onClick={addItem} style={{ marginTop: '10px', backgroundColor: '#003366', color: '#fff', padding: '10px 20px', border: 'none', borderRadius: '6px' }}>+ Add Item</button>
-
-        <div style={{ textAlign: 'right', marginTop: '20px' }}>
+        {/* Notes & Total */}
+        <div style={{ marginBottom: 20 }}>
+          <label>Notes:</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #ccc' }} />
+        </div>
+        <div style={{ textAlign: 'right', marginBottom: 20 }}>
           <strong>Total: ₹{totalAmount.toFixed(2)}</strong>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '30px' }}>
-          <button onClick={handleSave} style={{ padding: '10px 24px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', marginRight: '12px' }}>Save Quotation</button>
-          <button onClick={handlePrint} style={{ padding: '10px 24px', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '6px' }}>Print</button>
+        {/* Actions */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
+          <button onClick={handleSave} style={{ background: '#28a745', color: '#fff', padding: '12px 24px', border: 'none', borderRadius: 8 }}>
+            Save Quotation
+          </button>
+          <button onClick={handlePrint} style={{ background: '#007bff', color: '#fff', padding: '12px 24px', border: 'none', borderRadius: 8 }}>
+            Print
+          </button>
         </div>
       </div>
-
-      {showCustomerForm && (
-        <div
-          style={{
-            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-            backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', zIndex: 9999
-          }}
-          onClick={() => {
-            console.log("🛑 Modal backdrop clicked, closing form.");
-            setShowCustomerForm(false);
-          }}
-        >
-          <div
-            style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '600px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <CustomerForm onClose={() => {
-              console.log("✅ Customer form closed");
-              setShowCustomerForm(false);
-            }} />
-          </div>
-        </div>
-      )}
-      
     </div>
-  );
-};
+  )
+}
 
-export default QuotationForm;
+export default QuotationForm

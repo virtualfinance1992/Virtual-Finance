@@ -1,3 +1,4 @@
+
 # backend/vouchers/utils.py
 
 from datetime import datetime
@@ -118,127 +119,111 @@ def ensure_purchase_ledgers(company_id, supplier_name):
 # Expense
 from accounting.models import AccountGroup, LedgerAccount
 
-def ensure_expense_ledgers(company_id, expense_account_name):
-    print(f"✨ Ensuring ledgers for company {company_id} and expense account '{expense_account_name}'")
-
-    # Get or create Expense Account Group
+def ensure_expense_ledgers(company_id, party_name, item_name=None, expense_type='INDIRECT'):
+    """
+    Ensure ledgers exist for expense, GST payable, and party (creditors).
+    """
+    # Determine group
+    group_name = 'Direct Expenses' if expense_type.upper() == 'DIRECT' else 'Indirect Expenses'
+    print(f"🔍 Ensuring Expense Group: {group_name}")
     expense_group, _ = AccountGroup.objects.get_or_create(
         company_id=company_id,
-        group_name="Direct Expenses",
-        defaults={"nature": "Expense", "description": "Expenses directly related to operations"}
+        group_name=group_name,
+        defaults={'nature': 'Expense', 'description': group_name}
     )
-
-    # Get or create GST Payable Group
-    gst_group, _ = AccountGroup.objects.get_or_create(
-        company_id=company_id,
-        group_name="GST Payable",
-        defaults={"nature": "Liability", "description": "GST liability"}
-    )
-
-    # 👇 Party Ledger (credited)
-    party_group, _ = AccountGroup.objects.get_or_create(
-        company_id=company_id,
-        group_name="Creditors",
-        defaults={"nature": "Liability", "description": "Expenses Payable to vendors"}
-    )
-
-    # ✅ Expense Ledger
+    ledger_label = item_name or group_name
     expense_ledger, _ = LedgerAccount.objects.get_or_create(
         company_id=company_id,
-        name=f"{expense_account_name} (Expense)",  # ✅ Unique name
-        defaults={"account_group": expense_group}
+        name=ledger_label,
+        defaults={'account_group': expense_group}
     )
-
-    # ✅ Party Ledger
-    party_ledger, _ = LedgerAccount.objects.get_or_create(
+    # GST Payable
+    gst_group, _ = AccountGroup.objects.get_or_create(
         company_id=company_id,
-        name=f"{expense_account_name} (Payable)",  # ✅ Unique name
-        defaults={"account_group": party_group}
+        group_name='GST Payable',
+        defaults={'nature': 'Liability', 'description': 'GST Payable'}
     )
-
-    # ✅ GST Ledger
     gst_ledger, _ = LedgerAccount.objects.get_or_create(
         company_id=company_id,
-        name="GST Payable",
-        defaults={"account_group": gst_group}
+        name='GST Payable',
+        defaults={'account_group': gst_group}
     )
+    # Party ledger
+    creditors_group, _ = AccountGroup.objects.get_or_create(
+        company_id=company_id,
+        group_name='Sundry Creditors',
+        defaults={'nature': 'Liability', 'description': 'Sundry Creditors'}
+    )
+    party_ledger, _ = LedgerAccount.objects.get_or_create(
+        company_id=company_id,
+        name=party_name,
+        defaults={'account_group': creditors_group}
+    )
+    return {'expense': expense_ledger.id, 'gst': gst_ledger.id, 'party': party_ledger.id}
 
-    return {
-        "expense": expense_ledger.id,
-        "gst": gst_ledger.id,
-        "party": party_ledger.id
-    }
+
+
 
 #Income 
+# utils.py
+
 from accounting.models import AccountGroup, LedgerAccount
 
-def ensure_income_ledgers(company_id, income_account_name):
-    print(f"✨ Ensuring ledgers for company {company_id} and income account '{income_account_name}'")
+def ensure_income_ledgers(company_id, party_name, item_name=None, income_type='DIRECT'):
+    """
+    Ensure account‐groups & ledgers exist for:
+      • Income (per item_name, or group_name if item_name is None)
+      • GST Receivable
+      • Party (customer) ledger
+    """
+    # 1) Pick the right group: Direct vs Indirect
+    group_name = 'Direct Income' if income_type.upper() == 'DIRECT' else 'Indirect Income'
+    print(f"🔍 Ensuring Income Group: {group_name}")
+    income_group, _ = AccountGroup.objects.get_or_create(
+        company_id=company_id,
+        group_name=group_name,
+        defaults={'nature': 'Income', 'description': f'{group_name} accounts'}
+    )
 
-    # ✅ Get or create Income Account Group
-    try:
-        income_group, _ = AccountGroup.objects.get_or_create(
-            company_id=company_id,
-            group_name="Direct Income",
-            defaults={"nature": "Income", "description": "Primary income sources"}
-        )
-        print(f"✅ Income group ensured: {income_group.group_name}")
-    except Exception as e:
-        print("❌ Error creating/fetching income group:", e)
-        raise
+    # 2) GST Receivable group (always Asset)
+    gst_group, _ = AccountGroup.objects.get_or_create(
+        company_id=company_id,
+        group_name='GST Receivable',
+        defaults={'nature': 'Asset', 'description': 'GST to be claimed back'}
+    )
+    gst_ledger, _ = LedgerAccount.objects.get_or_create(
+        company_id=company_id,
+        name='GST Receivable',
+        defaults={'account_group': gst_group}
+    )
+    print(f"✅ GST group ensured: {gst_group.group_name}")
 
-    # ✅ Get or create GST Receivable Group (Asset)
-    try:
-        gst_group, _ = AccountGroup.objects.get_or_create(
-            company_id=company_id,
-            group_name="GST Receivable",
-            defaults={"nature": "Asset", "description": "GST to be received from customers"}
-        )
-        print(f"✅ GST group ensured: {gst_group.group_name}")
-    except Exception as e:
-        print("❌ Error creating/fetching GST group:", e)
-        raise
+    # 3) Income ledger per item_name (or group fallback)
+    ledger_label = item_name or group_name
+    income_ledger, _ = LedgerAccount.objects.get_or_create(
+        company_id=company_id,
+        name=ledger_label,
+        defaults={'account_group': income_group}
+    )
+    print(f"✅ Income ledger ensured: {income_ledger.name}")
 
-    # ✅ Create or fetch income ledger
-    try:
-        income_ledger, _ = LedgerAccount.objects.get_or_create(
-            company_id=company_id,
-            name=income_account_name,
-            defaults={"account_group": income_group}
-        )
-        print(f"✅ Income ledger ensured: {income_ledger.name}")
-    except Exception as e:
-        print("❌ Error creating/fetching income ledger:", e)
-        raise
-
-    # ✅ Create or fetch GST Receivable ledger
-    try:
-        gst_ledger, _ = LedgerAccount.objects.get_or_create(
-            company_id=company_id,
-            name="GST Receivable",
-            defaults={"account_group": gst_group}
-        )
-        print(f"✅ GST Receivable ledger ensured: {gst_ledger.name}")
-    except Exception as e:
-        print("❌ Error creating/fetching GST Receivable ledger:", e)
-        raise
-
-    # ✅ Create or fetch Party ledger (same as income ledger name — for amount received from customer)
-    try:
-        party_ledger, _ = LedgerAccount.objects.get_or_create(
-            company_id=company_id,
-            name=income_account_name,
-            defaults={"account_group": income_group}
-        )
-        print(f"✅ Party ledger ensured: {party_ledger.name}")
-    except Exception as e:
-        print("❌ Error creating/fetching party ledger:", e)
-        raise
+    # 4) Party (customer) ledger
+    party_group, _ = AccountGroup.objects.get_or_create(
+        company_id=company_id,
+        group_name='Sundry Debtors',
+        defaults={'nature': 'Asset', 'description': 'Customers owing us money'}
+    )
+    party_ledger, _ = LedgerAccount.objects.get_or_create(
+        company_id=company_id,
+        name=party_name,
+        defaults={'account_group': party_group}
+    )
+    print(f"✅ Party ledger ensured: {party_ledger.name}")
 
     return {
-        "income": income_ledger.id,
-        "gst": gst_ledger.id,
-        "party": party_ledger.id
+        'income': income_ledger.id,
+        'gst':     gst_ledger.id,
+        'party':   party_ledger.id
     }
 
 

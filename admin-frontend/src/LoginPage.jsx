@@ -1,12 +1,16 @@
+
+// src/LoginPage.jsx
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
+import logo from './lOGO.png';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showError, setShowError] = useState(false);
 
   const navigate = useNavigate();
 
@@ -15,65 +19,66 @@ const LoginPage = () => {
 
     if (!username || !password) {
       setError('Username and password are required');
+      setShowError(true);
       return;
     }
 
     try {
-      const response = await axios.post('https://virtual-finance-backend.onrender.com/api/token/', {
-        username,
-        password,
-      }, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const response = await axios.post(
+        'http://127.0.0.1:8000/api/token/',
+        { username, password },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
 
       const token = response.data.access;
-
-      // ✅ Save token and confirm it's saved
       localStorage.setItem('accessToken', token);
-      const savedToken = localStorage.getItem('accessToken');
-      console.log("✅ Access token saved:", savedToken);
-
-      if (savedToken) {
-        navigate('/company');
-      } else {
-        setError('Token could not be saved. Please check browser storage settings.');
-      }
-
-    } catch (error) {
-      console.error("❌ Login failed:", error);
+      navigate('/company');
+    } catch (err) {
+      console.error('Login failed:', err);
       setError('Invalid username or password');
+      setShowError(true);
     }
   };
 
   return (
     <div className="login-page">
-      <h2>Login</h2>
-      <form onSubmit={handleLogin}>
-        <div className="form-field">
-          <label>Username</label>
-          <input
-            type="text"
-            name="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
+      <img src={logo} alt="Logo" className="top-left-logo" />
+      <div className="login-card">
+        <img src={logo} alt="Logo" className="center-logo" />
+        <h2>Login</h2>
+        <form onSubmit={handleLogin}>
+          <div className="form-field">
+            <label>Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="form-field">
+            <label>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+          </div>
+          <button type="submit" className="btn-primary">Login</button>
+        </form>
+      </div>
+
+      {showError && (
+        <div className="error-overlay" onClick={() => setShowError(false)}>
+          <div className="error-popup" onClick={e => e.stopPropagation()}>
+            <p>{error}</p>
+            <button onClick={() => setShowError(false)}>OK</button>
+          </div>
         </div>
-        <div className="form-field">
-          <label>Password</label>
-          <input
-            type="password"
-            name="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <button type="submit">Login</button>
-      </form>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      )}
     </div>
   );
 };
 
 export default LoginPage;
+

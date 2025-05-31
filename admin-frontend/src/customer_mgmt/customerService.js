@@ -1,7 +1,7 @@
 // src/customer_mgmt/customerService.js
 import axios from 'axios';
 
-const API_URL = 'https://virtual-finance-backend.onrender.com/api/customers/';  // Change this to your backend URL
+const API_URL = 'http://localhost:8000/api/customers/';  // Change this to your backend URL
 
 const getCustomers = () => {
   return axios.get(API_URL);

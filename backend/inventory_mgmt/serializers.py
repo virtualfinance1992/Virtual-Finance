@@ -6,6 +6,7 @@ from inventory_mgmt.utils import update_inventory
 
 
 class InventoryItemSerializer(serializers.ModelSerializer):
+    total_value = serializers.SerializerMethodField()  # ✅ This line is required
     class Meta:
         model = InventoryItem
         fields = [
@@ -21,10 +22,15 @@ class InventoryItemSerializer(serializers.ModelSerializer):
             'gst_applicable',
             'gst_rate',
             'company',           # ForeignKey, set via view
+            'total_value',   # ➕ Add this
         ]
         extra_kwargs = {
             'company': {'read_only': True},  # ✅ Set in view, not from request
         }
+
+    def get_total_value(self, obj):
+        # If you want a float instead of Decimal:
+        return float(obj.quantity) * float(obj.rate)
 
 
 

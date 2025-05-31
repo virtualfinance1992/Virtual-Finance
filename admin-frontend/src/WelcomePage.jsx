@@ -1,6 +1,8 @@
+// WelcomePage.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import './WelcomePage.css'; // 👈 Linked to external CSS
+import './WelcomePage.css';
+import logo from './lOGO.png';    // ← your provided path
 
 const WelcomePage = () => {
   const navigate = useNavigate();
@@ -16,6 +18,8 @@ const WelcomePage = () => {
   return (
     <div className="welcome-container">
       <div className="welcome-box">
+        <img src={logo} alt="Virtual Finance Logo" className="welcome-logo" />
+
         <h1>Virtual Finance ERP</h1>
         <p className="welcome-subtitle">A Smart Platform for Financial Operations</p>
         <div className="welcome-buttons">

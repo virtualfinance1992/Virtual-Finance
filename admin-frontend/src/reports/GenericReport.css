@@ -1,0 +1,160 @@
+:root {
+  --erp-bg: #fff;
+  --erp-text-primary: #2c3e50;
+  --erp-text-secondary: #566573;
+  --erp-border: #dcdcdc;
+  --erp-button-bg: #2e86ab;
+  --erp-button-hover: #1b4f72;
+  --erp-button-text: #fff;
+}
+
+/* Report container */
+.generic-report {
+  background: var(--erp-bg);
+  color: var(--erp-text-primary);
+  font-family: var(--erp-font, Arial, sans-serif);
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Internal header */
+.report-header--internal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--erp-button-bg);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+.report-header--internal h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: var(--erp-button-bg);
+}
+
+/* Company & period info */
+.report-info {
+  display: flex;
+  gap: 1rem;
+  color: var(--erp-text-secondary);
+  font-size: 1rem;
+}
+
+/* Controls + actions */
+.controls-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.controls select,
+.controls input {
+  margin-left: 0.5rem;
+  padding: 0.3rem;
+  font-size: 0.95rem;
+}
+.actions button {
+  margin-left: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--erp-button-text);
+  background: var(--erp-button-bg);
+  transition: background 0.2s;
+}
+.actions button.download-btn {
+  background: var(--erp-button-hover);
+}
+.actions button:hover {
+  opacity: 0.9;
+}
+
+/* Table styling */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+.data-table th,
+.data-table td {
+  border: 1px solid var(--erp-border);
+  padding: 0.75rem;
+}
+.data-table th {
+  background: var(--erp-button-bg);
+  color: var(--erp-button-text);
+  text-align: center;
+}
+.data-table td {
+  text-align: right;
+}
+.data-table td:first-child,
+.data-table td:nth-child(3) {
+  text-align: left;
+  font-weight: 500;
+}
+.data-table tfoot td {
+  background: #f9f9f9;
+}
+.data-table tfoot td strong {
+  color: var(--erp-text-primary);
+}
+
+/* Placeholder */
+.placeholder {
+  text-align: center;
+  color: var(--erp-text-secondary);
+  font-style: italic;
+}
+
+/* Print: hide controls and reset container */
+@media print {
+  .controls-actions {
+    display: none !important;
+  }
+  .generic-report {
+    box-shadow: none !important;
+    padding: 1rem !important;
+  }
+}
+
+/* PDF Export mode */
+.export-mode .controls-actions {
+  display: none !important;
+}
+
+.voucher-type-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.voucher-filter-btn {
+  background-color: #ccc;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  min-width: 100px;
+  text-align: center;
+}
+
+.voucher-filter-btn:hover {
+  background-color: #aaa;
+  color: #fff;
+}
+
+.voucher-filter-btn.active {
+  background-color: #2e86ab;
+  color: white;
+}
+

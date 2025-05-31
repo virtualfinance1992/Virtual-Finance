@@ -1,0 +1,495 @@
+/* src/SalesVoucherForm.scss */
+
+/* ----------------------------------------------------------------------------
+   VARIABLES (VF brand palette)
+---------------------------------------------------------------------------- */
+$vf-teal:    #4ba9b8;
+$vf-slate:   #f0f2f5;
+$vf-gray:    #7a7a7a;
+$vf-white:   #ffffff;
+$vf-red:     #e53e3e;
+
+/* ----------------------------------------------------------------------------
+   ANIMATIONS
+---------------------------------------------------------------------------- */
+@keyframes fadeInModal {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ----------------------------------------------------------------------------
+   5) Inner Invoice Card
+---------------------------------------------------------------------------- */
+.invoice-container {
+  background: $vf-slate;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: none;
+  position: relative;
+}
+
+/* ----------------------------------------------------------------------------
+   6) Voucher Header
+---------------------------------------------------------------------------- */
+.voucher-header {
+  margin-bottom: 24px;
+  text-align: center;
+  font-size: 1.5rem;
+  color: $vf-teal;
+}
+
+/* ----------------------------------------------------------------------------
+   7) Meta Section
+---------------------------------------------------------------------------- */
+.voucher-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 24px;
+  row-gap: 16px;
+  align-items: start;
+  margin-bottom: 30px;
+}
+
+
+.meta-group {
+  display: flex;
+  flex-direction: column;
+  
+  label {
+    font-weight: bold;
+    margin-bottom: 6px;
+    color: $vf-gray;
+  }
+  
+  input {
+    padding: 8px 6px;
+    border: 1px solid lighten($vf-gray, 40%);
+    border-radius: 6px;
+    background: $vf-white;
+    font-size: 0.95rem;
+  }
+}
+
+/* Assign each meta-group to a grid cell */
+.customer-group { grid-column: 1 / 2; grid-row: 1 / 2; }
+.invoice-group { grid-column: 2 / 3; grid-row: 1 / 2; }
+.account-group { grid-column: 1 / 2; grid-row: 2 / 3; }
+.date-group    { grid-column: 2 / 3; grid-row: 2 / 3; }
+
+/* Rounded customer input & inline “New Customer” button */
+.rounded-input {
+  border-radius: 12px;
+  width: 100%;
+}
+.btn-inline {
+  margin-top: 8px;
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: $vf-teal;
+  color: $vf-white;
+  border: none;
+  cursor: pointer;
+}
+
+  label {
+    font-weight: bold;
+    margin-bottom: 6px;
+    color: $vf-gray;
+  }
+
+  input, select, textarea {
+    padding: 8px 12px;
+    border: 1px solid lighten($vf-gray, 40%);
+    border-radius: 6px;
+    background: $vf-white;
+    font-size: 0.95rem;
+  }
+
+  .customer-dropdown {
+    position: relative;
+
+    .autocomplete-group {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+
+      input {
+        width: 100%;
+      }
+
+      ul {
+        position: absolute;
+        top: 100%; left: 0; right: 0;
+        background: $vf-white;
+        border: 1px solid lighten($vf-gray, 40%);
+        border-top: none;
+        max-height: 160px;
+        overflow-y: auto;
+        z-index: 1000;
+        list-style: none;
+        margin: 0; padding: 0;
+
+        li {
+          padding: 8px 12px;
+          cursor: pointer;
+          &:hover { background: lighten($vf-teal, 45%); }
+        }
+      }
+    }
+
+    .mark-new-btn {
+      margin-top: 8px;
+      background: $vf-teal;
+      color: $vf-white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+
+      &:hover { background: darken($vf-teal, 10%); }
+    }
+  }
+
+
+/* ----------------------------------------------------------------------------
+   8) Items Table
+---------------------------------------------------------------------------- */
+.voucher-table {
+  /* remove gaps */
+  border-collapse: collapse;
+  border-spacing: 0;
+  border-radius: 8px;
+  /* allow dropdown suggestions to overflow */
+  overflow: visible;
+
+  /* first column wider */
+  th:first-child,
+  td:first-child {
+    width: 300px;
+  }
+
+  thead th {
+    /* gradient header */
+    background: linear-gradient(90deg, lighten($vf-teal, 8%), $vf-teal);
+    color: $vf-white;
+    padding: 8px 12px;      /* header height */
+    border: none;           /* remove white lines */
+    text-align: left;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* optional subtle separator between headers */
+  thead th + th {
+    box-shadow: inset 1px 0 0 rgba(255,255,255,0.2);
+  }
+
+  .text-right {
+    text-align: right;
+  }
+
+  /* style all data-row cells uniformly */
+  tbody tr td {
+    background: $vf-white;
+    vertical-align: middle;
+    padding: 6px 8px;
+    height: 42px;
+
+    /* separator between cells */
+    &:not(:last-child) {
+      border-right: 1px solid lighten($vf-gray, 60%);
+    }
+
+    /* make form controls fill the cell */
+    input,
+    select,
+    textarea {
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      padding: 0 10px;
+      border: 1px solid lighten($vf-gray, 40%);
+      border-radius: 4px;
+      font-size: 0.9rem;
+      background: $vf-white;
+    }
+
+    /* prevent notes textarea from resizing taller */
+    textarea {
+      resize: none;
+      max-height: 100%;
+    }
+  }
+
+  .item-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+
+    input,
+    select {
+      height: 100%;
+      box-sizing: border-box;
+    }
+
+    .add-item-btn {
+      padding: 4px 8px;
+      background: $vf-teal;
+      color: $vf-white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+      margin: 0;
+      align-self: center;
+
+      &:hover { background: darken($vf-teal, 8%); }
+    }
+
+    /* dropdown suggestion list */
+    ul {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: $vf-white;
+      border: 1px solid lighten($vf-gray, 40%);
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 10;
+      margin: 4px 0 0;
+      padding: 0;
+      list-style: none;
+
+      li {
+        padding: 8px 12px;
+        cursor: pointer;
+        &:hover { background: lighten($vf-teal, 45%); }
+      }
+    }
+  }
+
+  .remove-btn {
+    background: none;
+    border: none;
+    color: $vf-red;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: color .2s;
+
+    &:hover { color: darken($vf-red,10%); }
+  }
+}
+
+
+/* ----------------------------------------------------------------------------
+   9) + Add Item
+---------------------------------------------------------------------------- */
+.add-item-btn {
+  background: $vf-teal;
+  color: $vf-white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 20px;
+  font-size: 0.95rem;
+  transition: background .2s;
+
+  &:hover { background: darken($vf-teal, 8%); }
+}
+
+/* ----------------------------------------------------------------------------
+   10) Totals
+---------------------------------------------------------------------------- */
+.voucher-totals {
+  text-align: right;
+  margin-top: 20px;
+  color: $vf-gray;
+
+  h3 {
+    margin-top: 8px;
+    color: $vf-teal;
+    font-size: 1.25rem;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   11) Payment Section
+---------------------------------------------------------------------------- */
+.payment-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+
+  &.received {
+    .mode-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+
+      button {
+        flex: 1;
+        padding: 8px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        color: $vf-white;
+        cursor: pointer;
+        transition: opacity .2s;
+
+        &.cash { background: $vf-teal; }
+        &.bank { background: darken($vf-teal, 20%); }
+        &.active { opacity: 0.9; }
+      }
+    }
+
+    .amount-input {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+
+      input {
+        width: 120px;
+        padding: 6px 8px;
+        border: 1px solid lighten($vf-gray, 40%);
+        border-radius: 4px;
+      }
+
+      .full-pay-btn {
+        background: #ecc94b;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+    }
+
+    .summary {
+      color: $vf-gray;
+      margin-top: 8px;
+    }
+  }
+
+  .mark-received-btn {
+    background: lighten($vf-teal, 10%);
+    color: $vf-white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+
+    &:hover { background: darken($vf-teal, 4%); }
+  }
+
+  h3 {
+    color: $vf-gray;
+    margin-bottom: 12px;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   12) Action Buttons
+---------------------------------------------------------------------------- */
+.voucher-actions {
+  text-align: center;
+  margin-top: 30px;
+
+  .save-btn, .view-btn {
+    padding: 10px 24px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 0 8px;
+    transition: transform .1s;
+
+    &:active { transform: scale(0.98); }
+  }
+
+  .save-btn { background: #38a169; color: $vf-white; }
+  .view-btn { background: darken($vf-teal, 20%); color: $vf-white; }
+}
+
+/* ----------------------------------------------------------------------------
+   1–4) Modal Windows
+---------------------------------------------------------------------------- */
+.erp-modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+
+.erp-modal-container {
+  background: $vf-white;
+  border-radius: 12px;
+  width: 90%; max-width: 1100px; max-height: 90vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+  overflow: hidden;
+  animation: fadeInModal 0.3s ease-in-out;
+}
+
+.modal-header {
+  background: $vf-teal;
+  padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  color: $vf-white;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+
+  .modal-title {
+    font-size: 1.25rem; font-weight: 600;
+  }
+
+  .modal-close {
+    background: transparent; border: none;
+    color: $vf-white; font-size: 1.25rem;
+    width: 28px; height: 28px; display: flex;
+    align-items: center; justify-content: center;
+    border-radius: 50%; cursor: pointer;
+    transition: background .2s;
+    &:hover { background: rgba(255,255,255,0.2); }
+  }
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  color: $vf-gray;
+}
+
+
+.remarks-box {
+  margin-top: 24px;   // space above the box
+  label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: $vf-red;
+  }
+  textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid lighten($vf-gray, 40%);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    resize: vertical;
+    min-height: 60px;
+    box-sizing: border-box;
+  }
+}

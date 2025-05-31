@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import './company.css';
 import { useNavigate } from 'react-router-dom';
+import logo from '../lOGO.png';
 
 const Company = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('accessToken');
+  
 
   const [formData, setFormData] = useState({
     company_name: '',
@@ -21,6 +23,9 @@ const Company = () => {
   const [companies, setCompanies] = useState([]);
   const [error, setError] = useState('');
   const [editingCompanyId, setEditingCompanyId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const handleSelect = c => navigate(`/dashboard/${c.id}`);
+
 
   useEffect(() => {
     if (!token) {
@@ -34,7 +39,7 @@ const Company = () => {
   const fetchCompanies = async () => {
     try {
       const response = await axios.get(
-        'https://virtual-finance-backend.onrender.com/api/admin/company/list/',
+        'http://127.0.0.1:8000/api/admin/company/list/',
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -62,7 +67,7 @@ const Company = () => {
   const assignDefaultChartOfAccounts = async (companyId) => {
     try {
       const response = await axios.post(
-        `https://virtual-finance-backend.onrender.com/api/accounting/create-default/${companyId}/`,
+        `http://127.0.0.1:8000/api/accounting/create-default/${companyId}/`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -80,8 +85,8 @@ const Company = () => {
 
     try {
       const url = editingCompanyId
-        ? `https://virtual-finance-backend.onrender.com/api/admin/company/update/${editingCompanyId}/`
-        : 'https://virtual-finance-backend.onrender.com/api/admin/company/create/';
+        ? `http://127.0.0.1:8000/api/admin/company/update/${editingCompanyId}/`
+        : 'http://127.0.0.1:8000/api/admin/company/create/';
       const method = editingCompanyId ? 'put' : 'post';
 
       console.log('Sending data to backend:', formData);
@@ -138,7 +143,7 @@ const Company = () => {
 
     try {
       await axios.delete(
-        `https://virtual-finance-backend.onrender.com/api/admin/company/delete/${id}/`,
+        `http://127.0.0.1:8000/api/admin/company/delete/${id}/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       alert('🗑️ Company deleted.');
@@ -163,72 +168,63 @@ const Company = () => {
       company_name: company.company_name,
     };
   
-    // 🧠 Stores selected company object in localStorage
+    // 🔐 Store company ID and name separately
+    localStorage.setItem('selectedCompanyId', company.id);
+    localStorage.setItem('selectedCompanyName', company.company_name);
+    localStorage.setItem('activeCompanyName', company.company_name);
+    localStorage.setItem('selectedCompanyLogo', `http://localhost:8000${company.logo}`);
+
+  
+    // 🧠 Also store full company object if needed later
     localStorage.setItem('selectedCompany', JSON.stringify(selectedCompany));
-
-    // 🧹 Cleans up older keys to avoid conflict
-    localStorage.removeItem('selectedCompanyId');
-    localStorage.removeItem('selectedCompanyName');
-
-    console.log("✅ Company selected and stored:", selectedCompany);
-
-    // 🔁 Redirects user to the dashboard of that company
+  
+    console.log("✅ Company selected:", selectedCompany);
+  
+    // 🔁 Redirect to the dashboard
     navigate(`/dashboard/${company.id}`);
-    };
+  };
+  
   
   
   return (
-    <div style={{ padding: '2rem' }}>
-      <h2>{editingCompanyId ? 'Edit Company' : 'Create Company'}</h2>
-      <form onSubmit={handleSubmit} style={{ marginBottom: '2rem' }}>
-        {Object.keys(formData).map((field) => (
-          <div key={field} style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '.3rem' }}>
-              {field.replace(/_/g, ' ').toUpperCase()}
-            </label>
-            <input
-              type="text"
-              name={field}
-              value={formData[field]}
-              onChange={handleChange}
-              required={['company_name', 'pan_number', 'email', 'phone_number', 'address'].includes(field)}
-              style={{ padding: '0.5rem', width: '100%' }}
-            />
+    <div className="company-page-container">
+      <img src={logo} alt="Logo" className="company-logo" />
+      <div className="company-tiles">
+        {companies.map(c => (
+          <div key={c.id} className="company-tile" onClick={()=>handleSelect(c)}>
+            <div className="tile-name">{c.company_name}</div>
+            <div className="tile-actions" onClick={e=>e.stopPropagation()}>
+              <button onClick={()=>handleEdit(c)} title="You can edit this company">✏️</button>
+              <button onClick={()=>handleDelete(c.id)} title="Deleting will remove all company data">🗑️</button>
+            </div>
           </div>
         ))}
-        <button type="submit" style={{ padding: '0.5rem 1rem' }}>
-          {editingCompanyId ? 'Update Company' : 'Create Company'}
-        </button>
-        {error && <p style={{ color: 'red', marginTop: '1rem' }}>{error}</p>}
-      </form>
+        <div className="company-tile create-tile" onClick={()=>{setShowForm(true); setEditingCompanyId(null);}}>
+          <div className="plus">+</div>
+          <div>Create Company</div>
+        </div>
+      </div>
 
-      <h3>Your Companies</h3>
-      <ul>
-        {companies.map((company) => (
-          <li key={company.id} style={{ marginBottom: '1rem' }}>
-            <strong
-              onClick={() => handleSelectCompany(company)}
-              style={{
-                cursor: 'pointer',
-                color: '#007bff',
-                textDecoration: 'underline',
-              }}
-              title="Click to go to Dashboard"
-            >
-              {company.company_name}
-            </strong> — {company.email} <br />
-            <button onClick={() => handleEdit(company)} style={{ marginRight: '1rem' }}>
-              ✏️ Edit
-            </button>
-            <button onClick={() => handleDelete(company.id)} style={{ marginRight: '1rem' }}>
-              🗑️ Delete
-            </button>
-            <button onClick={() => handleAssignRole(company.id)}>
-              🧑‍💼 Assign Users
-            </button>
-          </li>
-        ))}
-      </ul>
+      {showForm && (
+        <div className="modal-overlay" onClick={()=>setShowForm(false)}>
+          <div className="modal-content" onClick={e=>e.stopPropagation()}>
+            <h2>{editingCompanyId ? 'Edit Company' : 'Create Company'}</h2>
+            <form onSubmit={handleSubmit} className="company-form">
+              {Object.entries(formData).map(([f,v])=>(
+                <div key={f} className="form-group">
+                  <label htmlFor={f}>{f.replace(/_/g,' ').toUpperCase()}</label>
+                  <input id={f} name={f} value={v} onChange={handleChange} required />
+                </div>
+              ))}
+              <div className="company-form-buttons">
+                <button type="submit">Save</button>
+                <button type="button" onClick={()=>setShowForm(false)}>Cancel</button>
+              </div>
+              {error && <div className="form-message">{error}</div>}
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

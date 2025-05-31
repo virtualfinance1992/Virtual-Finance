@@ -1,8 +1,9 @@
 // ✅ InventoryForm.jsx — Fixed companyId null issue and added safe logging
 import React, { useState } from 'react';
 
-const InventoryForm = ({ onClose, onSave, companyId }) => {
+const InventoryForm = ({ onClose, onSave, companyId ,initialName = ''}) => {
   const [formData, setFormData] = useState({
+    name: initialName,  // 👈 will be filled from `prefillItemName`
     name: '', unit: '', rate: '', barcode: '', hsn_code: '',
     description: '', opening_quantity: '', opening_value: '',
     gst_applicable: false, gst_rate: ''
@@ -44,7 +45,7 @@ const InventoryForm = ({ onClose, onSave, companyId }) => {
       console.log("📡 Sending inventory to backend for company:", companyId);
       console.log("📦 Payload:", newItem);
 
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/inventory/items/create/${companyId}/`, {
+      const res = await fetch(`http://localhost:8000/api/inventory/items/create/${companyId}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

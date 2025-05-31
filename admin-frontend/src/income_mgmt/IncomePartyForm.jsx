@@ -29,7 +29,7 @@ const IncomePartyForm = ({ onClose }) => {
     }
 
     try {
-      const res = await fetch(`https://virtual-finance-backend.onrender.com/api/incomes/party/create/${companyId}/`, {
+      const res = await fetch(`http://localhost:8000/api/incomes/party/create/${companyId}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -17,7 +17,7 @@ function CompanyList() {
 
       try {
         const response = await axios.get(
-          'https://virtual-finance-backend.onrender.com/user_mgmt/company/list/',
+          'http://127.0.0.1:8000/user_mgmt/company/list/',
           {
             headers: {
               Authorization: `Bearer ${token}`,

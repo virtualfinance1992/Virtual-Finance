@@ -1,0 +1,163 @@
+:root {
+    --erp-bg: #fff;
+    --erp-text-primary: #2c3e50;
+    --erp-text-secondary: #566573;
+    --erp-border: #dcdcdc;
+    --erp-button-bg: #2e86ab;
+    --erp-button-hover: #1b4f72;
+    --erp-button-text: #fff;
+  }
+  
+  .balance-sheet-report {
+    font-family: var(--erp-font, Arial, sans-serif);
+    background: var(--erp-bg);
+    color: var(--erp-text-primary);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  
+  .report-header h1 {
+    margin: 0;
+    font-size: 2rem;
+    color: var(--erp-button-bg);
+  }
+  
+  .report-controls-and-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .report-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .report-controls label,
+  .report-controls select,
+  .report-controls input {
+    font-size: 0.95rem;
+    padding: 0.3rem;
+  }
+  
+  .report-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .report-actions button {
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    transition: background 0.2s;
+  }
+  
+  .print-btn {
+    background: var(--erp-button-bg);
+    color: var(--erp-button-text);
+  }
+  
+  .download-btn {
+    background: var(--erp-button-hover);
+    color: var(--erp-button-text);
+  }
+  
+  .print-btn:hover {
+    background: #276e8b;
+  }
+  
+  .download-btn:hover {
+    background: #143f57;
+  }
+  
+  .report-period-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 1.5rem 0;
+    font-size: 1rem;
+    color: var(--erp-text-secondary);
+  }
+  
+  .report-period-display strong {
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+  
+  .balance-sheet-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+  
+  .balance-sheet-table th,
+  .balance-sheet-table td {
+    border: 1px solid var(--erp-border);
+    padding: 0.75rem;
+  }
+  
+  .balance-sheet-table th {
+    background: var(--erp-button-bg);
+    color: var(--erp-button-text);
+    text-align: center;
+  }
+  
+  .balance-sheet-table td {
+    text-align: right;
+  }
+  
+  .balance-sheet-table td:first-child,
+  .balance-sheet-table td:nth-child(3) {
+    text-align: left;
+    font-weight: 500;
+  }
+  
+  .placeholder {
+    text-align: center;
+    color: var(--erp-text-secondary);
+    font-style: italic;
+  }
+  
+  .balance-sheet-table tfoot td {
+    background: #f9f9f9;
+  }
+  
+  .balance-sheet-table tfoot td strong {
+    color: var(--erp-text-primary);
+    font-size: 1rem;
+  }
+  
+  /* Hide controls & actions in print & export modes */
+  @media print {
+    .report-controls-and-actions,
+    .report-actions {
+      display: none !important;
+    }
+  }
+  
+  .export-mode .report-controls-and-actions,
+  .export-mode .report-actions {
+    display: none !important;
+  }
+
+  /* src/reports/ReportViewerModal.css */
+
+/* Existing rules… */
+
+@media print {
+    .viewer-modal-header {
+      display: none !important;
+    }
+  }

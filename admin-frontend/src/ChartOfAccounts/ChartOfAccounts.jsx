@@ -35,7 +35,7 @@ const ChartOfAccounts = () => {
 
   const fetchCompanies = async () => {
     try {
-      const res = await axios.get('https://virtual-finance-backend.onrender.com/api/admin/company/list/', {
+      const res = await axios.get('http://127.0.0.1:8000/api/admin/company/list/', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCompanies(res.data);
@@ -49,7 +49,7 @@ const ChartOfAccounts = () => {
     try {
       setLoading(true);
       const res = await axios.get(
-        `https://virtual-finance-backend.onrender.com/api/accounting/list/${selectedCompanyId}/`,
+        `http://127.0.0.1:8000/api/accounting/list/${selectedCompanyId}/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setGroups(res.data);
@@ -63,7 +63,7 @@ const ChartOfAccounts = () => {
   const fetchLedgers = async () => {
     if (!selectedCompanyId) return;
     try {
-      const res = await axios.get(`https://virtual-finance-backend.onrender.com/api/accounting/ledger/list/${selectedCompanyId}/`, {
+      const res = await axios.get(`http://127.0.0.1:8000/api/accounting/ledger/list/${selectedCompanyId}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setLedgers(res.data);
@@ -78,7 +78,7 @@ const ChartOfAccounts = () => {
 
     try {
       const res = await axios.post(
-        `https://virtual-finance-backend.onrender.com/api/accounting/create-default/${selectedCompanyId}/`,
+        `http://127.0.0.1:8000/api/accounting/create-default/${selectedCompanyId}/`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -104,7 +104,7 @@ const ChartOfAccounts = () => {
 
     try {
       await axios.post(
-        `https://virtual-finance-backend.onrender.com/api/accounting/create-group/${selectedCompanyId}/`,
+        `http://127.0.0.1:8000/api/accounting/create-group/${selectedCompanyId}/`,
         formData,
         {
           headers: {

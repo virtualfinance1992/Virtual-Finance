@@ -44,6 +44,23 @@ class AdminRegistration(AbstractBaseUser, PermissionsMixin):
 
 # ✅ Company model (final clean version)
 
+from django.db import models
+from django.conf import settings
+
+# 🔁 Dynamic upload path helpers
+def company_file_path(instance, filename, folder):
+    return f"company_{instance.id}/{folder}/{filename}"
+
+def logo_upload_path(instance, filename):
+    return company_file_path(instance, filename, 'logos')
+
+def qr_upload_path(instance, filename):
+    return company_file_path(instance, filename, 'qr_codes')
+
+def signature_upload_path(instance, filename):
+    return company_file_path(instance, filename, 'signatures')
+
+
 class Company(models.Model):
     company_name = models.CharField(max_length=255)
     pan_number = models.CharField(max_length=10, unique=True)
@@ -53,13 +70,50 @@ class Company(models.Model):
     gst_number = models.CharField(max_length=15, blank=True, null=True)
     industry_type = models.CharField(max_length=100, blank=True, null=True)
     website_url = models.URLField(blank=True, null=True)
-    is_active = models.BooleanField(default=True)  # ✅ ADD THIS LINE
+    is_active = models.BooleanField(default=True)
     admin = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    
     chart_of_accounts_type = models.CharField(
-        max_length=10, choices=[('default', 'Default'), ('custom', 'Custom')], default='default')
+        max_length=10,
+        choices=[('default', 'Default'), ('custom', 'Custom')],
+        default='default'
+    )
+
+    # 🔁 Bank and UPI Details
+    account_name = models.CharField(max_length=255, blank=True, null=True)
+    account_number = models.CharField(max_length=30, blank=True, null=True)
+    bank_name = models.CharField(max_length=100, blank=True, null=True)
+    branch = models.CharField(max_length=100, blank=True, null=True)
+    ifsc_code = models.CharField(max_length=20, blank=True, null=True)
+    upi_id = models.CharField(max_length=100, blank=True, null=True)
+
+    # 📷 Media uploads (company-specific folders)
+    logo = models.ImageField(upload_to=logo_upload_path, blank=True, null=True)
+    qr_code = models.ImageField(upload_to=qr_upload_path, blank=True, null=True)
+    signature = models.ImageField(upload_to=signature_upload_path, blank=True, null=True)
+
+    registration_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
         return self.company_name
+
+    # 🧹 Delete old files if updated
+    def save(self, *args, **kwargs):
+        try:
+            old = Company.objects.get(pk=self.pk)
+            if old.logo and old.logo != self.logo:
+                old.logo.delete(save=False)
+            if old.qr_code and old.qr_code != self.qr_code:
+                old.qr_code.delete(save=False)
+            if old.signature and old.signature != self.signature:
+                old.signature.delete(save=False)
+        except Company.DoesNotExist:
+            pass
+        super().save(*args, **kwargs)
+
+    
+
+
 
 # ✅ Role & UserRole Models
 class Role(models.Model):

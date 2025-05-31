@@ -1,69 +1,150 @@
-.company-container {
-  max-width: 800px;
-  margin: 40px auto;
-  padding: 30px;
+/* src/company.css */
+:root {
+  --primary:       #4ba9b8;
+  --primary-dark:  #3a8c96;
+  --bg-light:      #f4f7f9;
+  --text-mid:      #576574;
+  --border-light:  #ddd;
+}
+
+.company-page-container {
+  position: relative;
+  min-height: 100vh;
+  padding: 40px;
+  background: var(--bg-light);
+}
+
+/* Center hologram logo */
+.company-page-container::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 300px; height: 300px;
+  background: url('../lOGO.png') center/contain no-repeat;
+  opacity: 0.07;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.company-logo {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  max-width: 120px;
+  opacity: 0.8;
+  filter: drop-shadow(0 4px 4px rgba(0,0,0,0.2));
+}
+
+.company-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  justify-content: center;
+  perspective: 1000px;
+}
+
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50%   { transform: translateY(-10px); }
+}
+
+.company-tile, .create-tile {
+  position: relative;
   background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 0 15px rgba(0,0,0,0.1);
-}
-
-.company-form {
-  margin-bottom: 30px;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-input {
-  width: 100%;
-  padding: 8px;
-  margin-top: 4px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-button {
-  background-color: #2c3e50;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 6px;
-  margin-right: 10px;
+  color: #333;
+  width: 240px;
+  height: 180px;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.1);
   cursor: pointer;
+  animation: float 6s ease-in-out infinite;
+  transition: background 0.3s;
+}
+.company-tile:hover, .create-tile:hover {
+  animation-play-state: paused;
+  transform: translateY(-14px);
+  box-shadow: 0 20px 36px rgba(0,0,0,0.2);
+  background: #eafafa;
 }
 
-button:hover {
-  background-color: #34495e;
+.tile-name {
+  z-index: 1;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
 }
 
-.company-list {
-  list-style: none;
-  padding: 0;
+.tile-actions {
+  z-index: 1;
+  display: flex;
+  gap: 16px;
+}
+.tile-actions button {
+  background: #fafafa;
+  border: 1px solid var(--primary);
+  color: var(--primary-dark);
+  border-radius: 50%;
+  width: 36px; height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: background 0.2s, transform 0.2s;
+}
+.tile-actions button:hover {
+  background: var(--primary);
+  color: #fff;
+  transform: scale(1.1);
 }
 
-.company-list li {
-  padding: 15px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid #ddd;
+.create-tile {
+  border: 2px dashed var(--primary);
+}
+.create-tile .plus {
+  z-index: 1;
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.create-tile div:last-child {
+  z-index: 1;
+  font-size: 16px;
+  font-weight: 600;
 }
 
-.actions button {
-  margin-top: 8px;
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
 }
-
-/* Add this to your company.css or in <style> section */
-.company-item {
-    padding: 1rem;
-    border: 1px solid #ddd;
-    margin-bottom: 1rem;
-    border-radius: 8px;
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
-    cursor: pointer;
-  }
-  
-  .company-item:hover {
-    background-color: #f5f5f5;
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
-  }
-  
+.modal-content {
+  background: #fff;
+  padding: 24px 32px;
+  border-radius: 12px;
+  width: 90vw; max-width: 500px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.modal-content h2 {
+  margin-top: 0;
+  color: var(--primary-dark);
+  text-align: center;
+}
+.company-form .form-group { margin-bottom: 12px; }
+.company-form label { display: block; margin-bottom: 4px; font-weight: 600; color: var(--text-mid); }
+.company-form input { width: 100%; padding: 8px; border: 1px solid var(--border-light); border-radius: 6px; }
+.company-form-buttons { display: flex; gap: 8px; margin-top: 12px; }
+.company-form-buttons button { flex:1; padding:10px; border:none; border-radius:8px; font-weight:600; color:#fff; cursor:pointer; }
+.company-form-buttons button:first-child { background:var(--primary); }
+.company-form-buttons button:last-child { background:#aaa; }
+.form-message { margin-top:8px; color:#e74c3c; font-weight:600; text-align:center; }
