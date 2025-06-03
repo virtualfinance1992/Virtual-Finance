@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from decimal import Decimal
 
-from django.db.models import Sum, Value, Case, When, F, ExpressionWrapper, DecimalField, FloatField
+from django.db.models import Q,Sum, Value, Case, When, F, ExpressionWrapper, DecimalField, FloatField
 import django.db.models.functions as dbfunc
 from django.utils.dateparse import parse_date
 
@@ -472,163 +472,567 @@ def inventory_pie_data(request, company_id):
 # reports/views.py
 # reports/views.py
 
+# reports/views.py
+
 import decimal
-from django.db.models import Sum, F, Case, When, DecimalField
+import traceback
+from decimal import Decimal
+from datetime import date
+
+from django.db.models import Sum, F, Case, When, DecimalField, Value
+from django.db.models.functions import Coalesce
 from rest_framework.response import Response
+from rest_framework import status
 
 from vouchers.models import JournalEntry as Entry
-from .serializers import (
-    BalanceSheetSerializer,
-    ProfitLossSerializer,
-    CashFlowSerializer,
-)
+from accounting.models import AccountGroup
+from .serializers import ProfitLossSerializer, BalanceSheetSerializer, CashFlowSerializer
 
 
 def parse_dates(request):
     """
-    Extract 'from' and 'to' from query params.
+    Examine query params in this order:
+      1) If 'from' & 'to' are present, use them verbatim (YYYY-MM-DD).
+      2) Elif 'fy' is present, interpret it as a financial year:
+         → APRIL 1 of fy  to MARCH 31 of (fy+1).
+      3) Elif 'quarter' & 'year' are present, map quarter to first/last day.
+      4) Otherwise: return (None, None) → no date filtering.
     """
-    start = request.query_params.get('from')
-    end   = request.query_params.get('to')
-    print(f"[parse_dates] start={start}, end={end}")
-    return start, end
+    qs = request.query_params
+
+    # 1) explicit from/to
+    frm = qs.get('from')
+    to  = qs.get('to')
+    if frm and to:
+        print(f"[parse_dates] using explicit from/to → {frm} to {to}")
+        return frm, to
+
+    # 2) financial year "fy=2025" means Apr 1 2025 → Mar 31 2026
+    fy = qs.get('fy')
+    if fy:
+        try:
+            fy_int = int(fy)
+            start = date(fy_int,     4,  1).isoformat()   # APR 1, fy
+            end   = date(fy_int + 1, 3, 31).isoformat()   # MAR 31, fy+1
+            print(f"[parse_dates] using financial year {fy} → {start} to {end}")
+            return start, end
+        except ValueError:
+            print(f"[parse_dates] invalid fy='{fy}', falling back to no dates")
+            return None, None
+
+    # 3) quarter + year
+    q  = qs.get('quarter')
+    yr = qs.get('year')
+    if q and yr:
+        try:
+            yr_int = int(yr)
+            quarter_map = {
+                'Q1': (1,  3),
+                'Q2': (4,  6),
+                'Q3': (7,  9),
+                'Q4': (10, 12),
+            }
+            m1, m2 = quarter_map.get(q.upper(), (None, None))
+            if m1 and m2:
+                start = date(yr_int, m1, 1).isoformat()
+                # last day of m2:
+                last_day = {
+                    1: 31, 2: 28, 3: 31, 4: 30, 5: 31,  6: 30,
+                    7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31
+                }[m2]
+                # adjust February for leap years
+                if m2 == 2:
+                    if (yr_int % 400 == 0) or (yr_int % 100 != 0 and yr_int % 4 == 0):
+                        last_day = 29
+                end = date(yr_int, m2, last_day).isoformat()
+                print(f"[parse_dates] using quarter {q} {yr} → {start} to {end}")
+                return start, end
+        except ValueError:
+            pass
+
+    # 4) no dates
+    print("[parse_dates] no valid date params found; returning (None, None)")
+    return None, None
 
 
-def summarize(entries, nature):
+
+import decimal
+import traceback
+from decimal import Decimal
+from datetime import date
+
+from django.db.models import Sum, F, Case, When, DecimalField
+from rest_framework.response import Response
+from rest_framework import status
+
+from vouchers.models import JournalEntry as Entry
+from accounting.models import AccountGroup
+from .serializers import ProfitLossSerializer
+
+
+def parse_dates(request):
     """
-    Group entries whose ledger.account_group.nature == nature.
-    Debits are counted positively; credits are subtracted.
-    Returns a list of dicts: [{'group': <group_name>, 'amount': <Decimal>}, …]
+    1) If 'from' & 'to' are passed, use them.
+    2) Elif 'fy' is passed, treat fy=2025 as Apr 1, 2025 → Mar 31, 2026
+    3) Elif 'quarter' & 'year' are present, map accordingly.
+    4) Otherwise, return (None, None).
     """
-    total_count = entries.count()
-    print(f"[summarize] Summarizing nature='{nature}', total entries={total_count}")
+    qs = request.query_params
 
-    qs = entries.filter(ledger__account_group__nature=nature)
-    # Use 'group_name' on AccountGroup instead of 'name'
-    agg = qs.values(group_name=F('ledger__account_group__group_name')).annotate(
-        amount=Sum(
-            Case(
-                When(is_debit=True,  then=F('amount')),
-                When(is_debit=False, then=F('amount') * decimal.Decimal(-1)),
-                output_field=DecimalField()
-            )
-        )
-    )
+    # 1) explicit from/to
+    frm = qs.get('from')
+    to = qs.get('to')
+    if frm and to:
+        print(f"[parse_dates] Using explicit from/to → {frm} to {to}")
+        return frm, to
 
-    summary = []
-    for x in agg:
-        grp = x['group_name']
-        amt = x['amount'] or decimal.Decimal('0.00')
-        summary.append({'group': grp, 'amount': amt})
-        print(f"  [summarize] → Group '{grp}': amount={amt}")
+    # 2) financial year "fy=2025" → Apr 1 2025 → Mar 31 2026
+    fy = qs.get('fy')
+    if fy:
+        try:
+            fy_int = int(fy)
+            start = date(fy_int, 4, 1).isoformat()
+            end = date(fy_int + 1, 3, 31).isoformat()
+            print(f"[parse_dates] Using financial year {fy} → {start} to {end}")
+            return start, end
+        except ValueError:
+            print(f"[parse_dates] Invalid fy='{fy}'; returning (None, None)")
+            return None, None
 
-    return summary
+    # 3) quarter + year
+    q = qs.get('quarter')
+    yr = qs.get('year')
+    if q and yr:
+        try:
+            yr_int = int(yr)
+            quarter_map = {
+                'Q1': (1, 3),
+                'Q2': (4, 6),
+                'Q3': (7, 9),
+                'Q4': (10, 12),
+            }
+            m1, m2 = quarter_map.get(q.upper(), (None, None))
+            if m1 and m2:
+                start = date(yr_int, m1, 1).isoformat()
+                last_day = {
+                    1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30,
+                    7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31
+                }[m2]
+                # adjust February for leap years
+                if m2 == 2 and ((yr_int % 400 == 0) or (yr_int % 100 != 0 and yr_int % 4 == 0)):
+                    last_day = 29
+                end = date(yr_int, m2, last_day).isoformat()
+                print(f"[parse_dates] Using quarter {q} {yr} → {start} to {end}")
+                return start, end
+        except ValueError:
+            pass
+
+    # 4) no dates
+    print("[parse_dates] No valid date params found; returning (None, None)")
+    return None, None
 
 
-def balance_sheet(request, company_id):
-    """
-    GET /api/reports/<company_id>/balance-sheet/?from=YYYY-MM-DD&to=YYYY-MM-DD
-    Returns JSON:
-      {
-        "assets":    [ {group, amount}, … ],
-        "liabilities":[ {group, amount}, … ],
-        "equity":    [ {group, amount}, … ]
-      }
-    """
-    start, end = parse_dates(request)
-    print(f"[balance_sheet] Called with company_id={company_id}, from={start}, to={end}")
+import decimal
+import traceback
 
-    entries = Entry.objects.filter(
-        voucher__company_id=company_id,
-        voucher__date__range=[start, end]
-    )
-    print(f"[balance_sheet] Fetched {entries.count()} JournalEntry records")
+from django.db.models import F, Sum, Case, When
+from django.db.models.fields import DecimalField
+from rest_framework.response import Response
+from rest_framework import status
 
-    data = {
-        'assets':      summarize(entries, 'Asset'),
-        'liabilities': summarize(entries, 'Liability'),
-        'equity':      summarize(entries, 'Equity'),
-    }
-    print("[balance_sheet] Assembled data for assets, liabilities, equity")
-    return Response(BalanceSheetSerializer(data).data)
+from accounting.models import AccountGroup
+from vouchers.models import JournalEntry as Entry   # <-- adjust import if needed
+from .serializers import ProfitLossSerializer
 
 
 def profit_and_loss(request, company_id):
     """
     GET /api/reports/<company_id>/profit-loss/?from=YYYY-MM-DD&to=YYYY-MM-DD
-    Returns JSON:
-      {
-        "revenue":    [ {group, amount}, … ],
-        "expenses":   [ {group, amount}, … ],
-        "net_profit": <Decimal>
-      }
+      OR
+    GET /api/reports/<company_id>/profit-loss/?fy=2025
+
+    Returns a fully broken‐out P&L.  Each section only sums the “correct side”
+    of each ledger group to avoid debits cancelling credits.
     """
-    start, end = parse_dates(request)
-    print(f"[profit_and_loss] Called with company_id={company_id}, from={start}, to={end}")
+    try:
+        # ─── 1) Parse from/to dates (or financial year) ───
+        start, end = parse_dates(request)
+        print(f"[profit_and_loss] Called with company_id={company_id}, from={start}, to={end}")
 
-    entries = Entry.objects.filter(
-        voucher__company_id=company_id,
-        voucher__date__range=[start, end]
-    )
-    print(f"[profit_and_loss] Fetched {entries.count()} JournalEntry records")
+        # ─── 2) Base QuerySet: all JournalEntry (for this company/date range) ───
+        base_qs = Entry.objects.filter(
+            voucher__company_id=company_id,
+            voucher__date__range=[start, end]
+        ).select_related('voucher', 'ledger__account_group')
+        total_entries = base_qs.count()
+        print(f"[profit_and_loss] Fetched {total_entries} JournalEntry records total")
 
-    revenue_groups  = summarize(entries, 'Revenue')
-    expense_groups  = summarize(entries, 'Expense')
+        # ─── 3) SALES (voucher_type='SALES') ───
+        sales_entries = base_qs.filter(voucher__voucher_type='SALES')
+        print(f"[profit_and_loss] Total SALES JournalEntry records: {sales_entries.count()}")
 
-    total_revenue = sum(item['amount'] for item in revenue_groups)
-    total_expense = sum(item['amount'] for item in expense_groups)
-    net_profit    = total_revenue - total_expense
+        # 3.1) “Sales Accounts” top‐line = sum of credits under group="Sales Accounts"
+        total_sales_amount = decimal.Decimal("0.00")
+        print("[profit_and_loss]   ─── Computing Sales Accounts total (only credits under 'Sales Accounts') ───")
+        for idx, e in enumerate(sales_entries, start=1):
+            grp_name = e.ledger.account_group.group_name
+            ledger_name = e.ledger.name
+            amt = e.amount.quantize(decimal.Decimal("0.01"))
+            is_debit = e.is_debit
 
-    print(f"[profit_and_loss] Total revenue={total_revenue}, total expense={total_expense}, net_profit={net_profit}")
+            print(
+                f"[profit_and_loss]    [{idx:>2}] Voucher=SALES "
+                f"| Group={grp_name:<20} "
+                f"| Ledger={ledger_name:<15} "
+                f"| Amount={amt:>8} "
+                f"| is_debit={is_debit}"
+            )
 
-    payload = {
-        'revenue':    revenue_groups,
-        'expenses':   expense_groups,
-        'net_profit': net_profit
-    }
-    return Response(ProfitLossSerializer(payload).data)
+            # Include only if group="Sales Accounts" AND is_debit=False (i.e. credit to Sales Accounts)
+            if (grp_name == "Sales Accounts") and (not is_debit):
+                total_sales_amount += e.amount
+                print(f"[profit_and_loss]       → INCLUDED for Sales Accounts: +{amt}")
+            else:
+                print(f"[profit_and_loss]       → SKIPPED for Sales Accounts")
 
+        total_sales_amount = total_sales_amount.quantize(decimal.Decimal("0.01"))
+        print(f"[profit_and_loss] Total Sales (Sales Accounts) = {total_sales_amount}")
 
-def cash_flow(request, company_id):
-    """
-    GET /api/reports/<company_id>/cash-flow/?from=YYYY-MM-DD&to=YYYY-MM-DD
-    Returns JSON:
-      {
-        "operating": [ {group, amount}, … ],
-        "investing": [ {group, amount}, … ],
-        "financing": [ {group, amount}, … ],
-        "net_change": <Decimal>
-      }
-    """
-    start, end = parse_dates(request)
-    print(f"[cash_flow] Called with company_id={company_id}, from={start}, to={end}")
+        sales_dict = {
+            "group":   "Sales Accounts",
+            "amount":  total_sales_amount,
+            "entries": []    # No voucher‐level drill‐down here; we show party‐wise next
+        }
 
-    cash_entries = Entry.objects.filter(
-        voucher__company_id=company_id,
-        voucher__date__range=[start, end],
-        ledger__account_group__name='Cash and Cash Equivalents'
-    )
-    print(f"[cash_flow] Fetched {cash_entries.count()} cash-related JournalEntry records")
+        # 3.2) SALES BY PARTY: only the debit side (is_debit=True) under group="Sundry Debtors"
+        party_agg = (
+            sales_entries
+            .filter(
+                is_debit=True,
+                ledger__account_group__group_name="Sundry Debtors"
+            )
+            .values(party=F("ledger__name"))
+            .annotate(
+                total=Sum(
+                    F("amount"),
+                    output_field=DecimalField(max_digits=14, decimal_places=2)
+                )
+            )
+        )
 
-    op_entries  = cash_entries.filter(voucher__voucher_type__in=['SALES', 'RECEIPT'])
-    inv_entries = cash_entries.filter(voucher__voucher_type__in=['PURCHASE'])
-    fin_entries = cash_entries.filter(voucher__voucher_type__in=['PAYMENT'])
+        sales_by_party = []
+        print("[profit_and_loss]   ─── Computing Sales by Party (debits under 'Sundry Debtors') ───")
+        for row in party_agg:
+            party_name = row["party"] or "Unknown Party"
+            amt = (row["total"] or decimal.Decimal("0.00")).quantize(decimal.Decimal("0.01"))
+            sales_by_party.append({
+                "party": str(party_name),
+                "amount": amt
+            })
+            print(f"[profit_and_loss]   Sales Party '{party_name}' → {amt}")
 
-    print(f"[cash_flow] Operating entries count:  {op_entries.count()}")
-    print(f"[cash_flow] Investing entries count:  {inv_entries.count()}")
-    print(f"[cash_flow] Financing entries count:  {fin_entries.count()}")
+        if not sales_by_party:
+            print("[profit_and_loss]   No party‐wise sales returned.")
 
-    op_summary  = summarize(op_entries,  'Asset')
-    inv_summary = summarize(inv_entries, 'Asset')
-    fin_summary = summarize(fin_entries, 'Asset')
+        # ─── 4) OTHER INCOME (voucher_type='INCOME') ───
+        other_income_entries = base_qs.filter(voucher__voucher_type='INCOME')
+        print(f"[profit_and_loss] Total INCOME JournalEntry records: {other_income_entries.count()}")
 
-    net_change = sum(item['amount'] for item in (op_summary + inv_summary + fin_summary))
-    print(f"[cash_flow] Net cash change = {net_change}")
+        other_income_list = []
+        total_other_income = decimal.Decimal("0.00")
+        if other_income_entries.exists():
+            # Group by account_group, but only keep credits (is_debit=False)
+            inc_groups = (
+                other_income_entries
+                .values(group=F("ledger__account_group__group_name"))
+                .annotate(
+                    amount=Sum(
+                        Case(
+                            When(is_debit=False, then=F("amount")),
+                            When(is_debit=True, then=F("amount") * decimal.Decimal("-1")),
+                            output_field=DecimalField(max_digits=14, decimal_places=2)
+                        )
+                    )
+                )
+            )
 
-    payload = {
-        'operating':  op_summary,
-        'investing':  inv_summary,
-        'financing':  fin_summary,
-        'net_change': net_change
-    }
-    return Response(CashFlowSerializer(payload).data)
+            for g in inc_groups:
+                grp_name = g["group"] or "Unknown Income Group"
+                amt = (g["amount"] or decimal.Decimal("0.00")).quantize(decimal.Decimal("0.01"))
+                if amt != decimal.Decimal("0.00"):
+                    group_entries = other_income_entries.filter(
+                        ledger__account_group__group_name=grp_name
+                    )
+                    entry_list = []
+                    for e in group_entries:
+                        signed_amt = (e.amount if not e.is_debit else e.amount * decimal.Decimal("-1")).quantize(decimal.Decimal("0.01"))
+                        entry_list.append({
+                            "date":           e.voucher.date,
+                            "voucher_number": e.voucher.voucher_number,
+                            "ledger_name":    e.ledger.name,
+                            "is_debit":       e.is_debit,
+                            "amount":         e.amount,
+                            "signed_amount":  signed_amt
+                        })
+                    other_income_list.append({
+                        "group":   grp_name,
+                        "amount":  amt,
+                        "entries": entry_list
+                    })
+                    total_other_income += amt
+                    print(f"[profit_and_loss]   Other Income '{grp_name}': {amt} ({len(entry_list)} rows)")
+
+        total_other_income = total_other_income.quantize(decimal.Decimal("0.01"))
+        print(f"[profit_and_loss] Total OTHER INCOME: {total_other_income}")
+
+        # ─── 5) COGS (Purchase Accounts): voucher_type='PURCHASE' ───
+        purchase_entries = base_qs.filter(voucher__voucher_type='PURCHASE')
+        print(f"[profit_and_loss] Total PURCHASE JournalEntry records: {purchase_entries.count()}")
+
+        total_cogs_amount = decimal.Decimal("0.00")
+        cogs_entry_list = []
+        for e in purchase_entries:
+            grp_name = e.ledger.account_group.group_name
+            ledger_name = e.ledger.name
+            amt = e.amount.quantize(decimal.Decimal("0.01"))
+            is_debit = e.is_debit
+
+            print(
+                f"[profit_and_loss]    Purchase Row → Group={grp_name:<20} "
+                f"| Ledger={ledger_name:<15} | Amount={amt:>8} | is_debit={is_debit}"
+            )
+
+            # Only include if group="Purchase Accounts" AND is_debit=True
+            if (grp_name == "Purchase Accounts") and is_debit:
+                total_cogs_amount += e.amount
+                print(f"[profit_and_loss]       → INCLUDED for COGS: +{amt}")
+            else:
+                print(f"[profit_and_loss]       → SKIPPED for COGS")
+
+            # Always store every purchase entry (so that front end can expand if needed)
+            signed_amt = (e.amount if e.is_debit else e.amount * decimal.Decimal("-1")).quantize(decimal.Decimal("0.01"))
+            cogs_entry_list.append({
+                "date":           e.voucher.date,
+                "voucher_number": e.voucher.voucher_number,
+                "ledger_name":    e.ledger.name,
+                "is_debit":       e.is_debit,
+                "amount":         e.amount,
+                "signed_amount":  signed_amt
+            })
+
+        total_cogs_amount = total_cogs_amount.quantize(decimal.Decimal("0.01"))
+        print(f"[profit_and_loss] Total COGS (Purchase Accounts) = {total_cogs_amount}")
+
+        cogs_dict = {
+            "group":   "Purchase Accounts",
+            "amount":  total_cogs_amount,
+            "entries": cogs_entry_list
+        }
+
+        # ─── 5.1) PURCHASE BY PARTY (credit side under “Sundry Creditors”) ───
+        purchase_party_agg = (
+            purchase_entries
+            .filter(
+                is_debit=False,
+                ledger__account_group__group_name="Sundry Creditors"
+            )
+            .values(party=F("ledger__name"))
+            .annotate(
+                total=Sum(
+                    F("amount"),
+                    output_field=DecimalField(max_digits=14, decimal_places=2)
+                )
+            )
+        )
+
+        purchase_by_party = []
+        print("[profit_and_loss]   ─── Computing Purchase by Party (credits under 'Sundry Creditors') ───")
+        for row in purchase_party_agg:
+            vendor_name = row["party"] or "Unknown Vendor"
+            amt = (row["total"] or decimal.Decimal("0.00")).quantize(decimal.Decimal("0.01"))
+            purchase_by_party.append({
+                "party": str(vendor_name),
+                "amount": amt
+            })
+            print(f"[profit_and_loss]   Purchase Party '{vendor_name}': {amt}")
+
+        if not purchase_by_party:
+            print("[profit_and_loss]   No party‐wise purchases returned.")
+
+        # ─── 6) GROSS PROFIT = Sales – |COGS| ───
+        gross_profit = (total_sales_amount - abs(total_cogs_amount)).quantize(decimal.Decimal("0.01"))
+        print(f"[profit_and_loss] Calculated Gross Profit: {gross_profit}")
+
+        # ─── 7) OPERATING EXPENSES (voucher_type='EXPENSE') ───
+               # ─── 7) OPERATING EXPENSES (only groups whose nature == 'Expense') ───
+        #     (previous version was grabbing all voucher_type='EXPENSE', which also pulled
+        #      Sundry Creditors because its group.nature != 'Expense')
+        expense_entries = base_qs.filter(
+            voucher__voucher_type='EXPENSE',
+            ledger__account_group__nature='Expense'
+        )
+        count_expense_entries = expense_entries.count()
+        print(f"[profit_and_loss] Total EXPENSE JournalEntry records (nature='Expense'): {count_expense_entries}")
+
+        operating_expense_list = []
+        total_operating_expenses = decimal.Decimal("0.00")
+
+        if count_expense_entries > 0:
+            # Group only true‐expense rows by AccountGroup.group_name
+            exp_groups = (
+                expense_entries
+                .values(group=F("ledger__account_group__group_name"))
+                .annotate(
+                    amount=Sum(
+                        Case(
+                            # Debits (actual расходы) count positive
+                            When(is_debit=True,  then=F("amount")),
+                            # Credits (if any) reduce expense
+                            When(is_debit=False, then=F("amount") * decimal.Decimal("-1")),
+                            output_field=DecimalField(max_digits=14, decimal_places=2)
+                        )
+                    )
+                )
+            )
+
+            print("[profit_and_loss]   ─── Grouping only true Expense rows by AccountGroup →")
+            for g in exp_groups:
+                grp_name = g["group"] or "Unknown Expense Group"
+                amt = (g["amount"] or decimal.Decimal("0.00")).quantize(decimal.Decimal("0.01"))
+
+                # Skip groups that net out to zero
+                if amt == decimal.Decimal("0.00"):
+                    print(f"[profit_and_loss]    → Expense group '{grp_name}' nets to 0.00, skipping.")
+                    continue
+
+                # Fetch all entries for this account‐group
+                group_entries = expense_entries.filter(
+                    ledger__account_group__group_name=grp_name
+                )
+                entry_list = []
+
+                print(f"[profit_and_loss]    → Expense group '{grp_name}': {amt} " 
+                      f"({group_entries.count()} rows)")
+                for idx, e in enumerate(group_entries.select_related("ledger__account_group"), start=1):
+                    signed_amt = (
+                        e.amount if e.is_debit
+                        else (e.amount * decimal.Decimal("-1"))
+                    ).quantize(decimal.Decimal("0.01"))
+
+                    entry_list.append({
+                        "date":           e.voucher.date,
+                        "voucher_number": e.voucher.voucher_number,
+                        "ledger_name":    e.ledger.name,
+                        "is_debit":       e.is_debit,
+                        "amount":         e.amount,
+                        "signed_amount":  signed_amt
+                    })
+
+                    print(
+                        f"[profit_and_loss]       [{idx:2d}] "
+                        f"Voucher=EXPENSE | Group={grp_name:<20} "
+                        f"| Ledger={e.ledger.name:<15} "
+                        f"| Amount={e.amount:>8} "
+                        f"| is_debit={e.is_debit} → signed={signed_amt}"
+                    )
+
+                operating_expense_list.append({
+                    "group":   grp_name,
+                    "amount":  amt,
+                    "entries": entry_list
+                })
+                total_operating_expenses += amt
+
+        total_operating_expenses = total_operating_expenses.quantize(decimal.Decimal("0.01"))
+        print(f"[profit_and_loss] Total OPERATING EXPENSES: {total_operating_expenses}")
+
+        # ─── 8) Operating Income = Gross Profit – |Operating Expenses| ───
+        operating_income = (gross_profit - abs(total_operating_expenses)).quantize(decimal.Decimal("0.01"))
+        print(f"[profit_and_loss] Calculated Operating Income: {operating_income}")
+
+        # ─── 9) INCOME TAX EXPENSE (voucher_type='INCOME_TAX') ───
+        tax_entries = base_qs.filter(voucher__voucher_type='INCOME_TAX')
+        print(f"[profit_and_loss] Total INCOME_TAX JournalEntry records: {tax_entries.count()}")
+
+        income_tax_list = []
+        total_income_tax = decimal.Decimal("0.00")
+        if tax_entries.exists():
+            tax_groups = (
+                tax_entries
+                .values(group=F("ledger__account_group__group_name"))
+                .annotate(
+                    amount=Sum(
+                        Case(
+                            When(is_debit=True,  then=F("amount")),
+                            When(is_debit=False, then=F("amount") * decimal.Decimal("-1")),
+                            output_field=DecimalField(max_digits=14, decimal_places=2)
+                        )
+                    )
+                )
+            )
+
+            for g in tax_groups:
+                grp_name = g["group"] or "Income Tax Expense"
+                amt = (g["amount"] or decimal.Decimal("0.00")).quantize(decimal.Decimal("0.01"))
+                if amt != decimal.Decimal("0.00"):
+                    group_entries = tax_entries.filter(
+                        ledger__account_group__group_name=grp_name
+                    )
+                    entry_list = []
+                    for e in group_entries:
+                        signed_amt = (e.amount if e.is_debit else e.amount * decimal.Decimal("-1")).quantize(decimal.Decimal("0.01"))
+                        entry_list.append({
+                            "date":           e.voucher.date,
+                            "voucher_number": e.voucher.voucher_number,
+                            "ledger_name":    e.ledger.name,
+                            "is_debit":       e.is_debit,
+                            "amount":         e.amount,
+                            "signed_amount":  signed_amt
+                        })
+                    income_tax_list.append({
+                        "group":   grp_name,
+                        "amount":  amt,
+                        "entries": entry_list
+                    })
+                    total_income_tax += amt
+                    print(f"[profit_and_loss]   Income Tax '{grp_name}': {amt} ({len(entry_list)} rows)")
+
+        total_income_tax = total_income_tax.quantize(decimal.Decimal("0.01"))
+        print(f"[profit_and_loss] Total Income Tax Expense: {total_income_tax}")
+
+        # ─── 10) NET INCOME = Operating Income + Other Income – |Income Tax Expense| ───
+        net_income = (
+            operating_income
+            + total_other_income
+            - abs(total_income_tax)
+        ).quantize(decimal.Decimal("0.01"))
+        print(f"[profit_and_loss] Calculated Net Income: {net_income}")
+
+        # ─── 11) Build payload ───
+        payload = {
+            "revenue":            [sales_dict],
+            "sales_by_party":     sales_by_party,
+            "other_income":       other_income_list,
+            "cogs":               [cogs_dict],
+            "purchase_by_party":  purchase_by_party,
+            "gross_profit":       gross_profit,
+            "expenses":           operating_expense_list,
+            "operating_income":   operating_income,
+            "income_tax":         income_tax_list,
+            "net_income":         net_income
+        }
+        print(f"[profit_and_loss] Payload keys: {list(payload.keys())}")
+
+        # ─── 12) Serialize & return ───
+        serializer = ProfitLossSerializer(data=payload)
+        serializer.is_valid(raise_exception=True)
+        print("[profit_and_loss] Serialization successful, returning HTTP 200")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        print("[profit_and_loss] Exception:", str(e))
+        traceback.print_exc()
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

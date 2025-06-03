@@ -158,3 +158,27 @@
   color: white;
 }
 
+
+
+
+
+/* ─── Nested table styling ─── */
+.nested-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+}
+.nested-table th,
+.nested-table td {
+  border: 1px solid var(--erp-border);
+  padding: 0.4rem;
+  font-size: 0.9rem;
+}
+.nested-table th {
+  background: var(--erp-button-bg);
+  color: var(--erp-button-text);
+  text-align: left;
+}
+.nested-table td {
+  text-align: right;
+}

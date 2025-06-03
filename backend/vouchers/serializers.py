@@ -20,6 +20,7 @@ class VoucherItemSerializer(serializers.ModelSerializer):
             'unit',
             'notes',
             'remarks',
+            
         ]
 
 
@@ -53,6 +54,7 @@ class VoucherSerializer(serializers.ModelSerializer):
             'against_voucher_number',
             'items',
             'entries',
+            'payment_mode', 
         ]
         read_only_fields = ['id', 'against_voucher_number']
         extra_kwargs = {

@@ -7,6 +7,8 @@ import axios                           from 'axios';
 import './LedgerDetailPage.css';
 import { Share2 }                      from 'lucide-react';
 import InvoiceTemplate from '../Invoice_Templates/InvoiceTemplate';  // adjust the path as needed
+import ReceiptTemplate from '../Invoice_Templates/ReceiptTemplate';
+
 
 
 
@@ -36,6 +38,14 @@ export default function LedgerDetailPage() {
   const [dateTo,      setDateTo]      = useState('');
   const [showSummary, setShowSummary] = useState(true);
   const [summary, setSummary] = useState({ count: 0, totalDr: 0, totalCr: 0, balance: 0 });
+
+    // ─── Receipt‐modal state ─────────────────────────────────────────────────────
+  // State to hold and show a Receipt‐only modal
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptData, setReceiptData]         = useState(null);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
 
 
    // → state for history modal
@@ -283,7 +293,11 @@ const deleteVoucher = async (companyId, voucher_id, voucher_number) => {
   if (!ledger) return <div>Loading…</div>;
 
 // ─── NEW: openInvoice helper ───────────────────────────────────────────────
- async function openInvoice(voucherId) {
+   /**
+   * Fetches history snapshots and opens either InvoiceTemplate or ReceiptTemplate
+   * depending on snapshot.voucher_type.
+   */
+  async function openVoucher(voucherId) {
   const url = `http://localhost:8000/api/voucher-audit/company/${companyId}/voucher/${voucherId}/history/`;
   console.log('📤 Endpoint:', url);
   console.log('🔄 Fetching history for voucher_id:', voucherId);
@@ -295,96 +309,168 @@ const deleteVoucher = async (companyId, voucher_id, voucher_number) => {
 
     const snapshots = res.data;
     console.log('✅ History snapshots:', snapshots);
-    console.log('🔍 Full snapshot objects:', JSON.stringify(snapshots, null, 2));
 
-    setHistorySnapshots(snapshots);
-    setHistoryModal(true);
-
-    // 1️⃣ Try to find the sale snapshot directly
-    let saleSnap = snapshots.find(h =>
-      h.voucher === voucherId &&
-      h.snapshot.voucher_type === 'SALES'
-    );
-
-    // 2️⃣ If not found, fallback: assume current is RECEIPT → backtrack to SALES
-    if (!saleSnap) {
-      const receiptSnap = snapshots.find(h =>
-        h.voucher === voucherId &&
-        h.snapshot.voucher_type === 'RECEIPT'
-      );
-      if (receiptSnap?.snapshot?.against_voucher) {
-        const saleId = receiptSnap.snapshot.against_voucher;
-        console.log(`⚙️ Fallback: treating ${voucherId} as receipt, mapped sale ID = ${saleId}`);
-        saleSnap = snapshots.find(h =>
-          h.voucher === saleId &&
-          h.snapshot.voucher_type === 'SALES'
-        );
-      }
-    }
-
-    if (!saleSnap) {
-      console.error('❌ No sale snapshot found for voucher', voucherId);
-      alert('Could not find invoice data.');
+    // Find the wrapper whose h.voucher === voucherId
+    const snapWrapper = snapshots.find(h => h.voucher === voucherId);
+    if (!snapWrapper) {
+      console.error('❌ No snapshot at all for voucher', voucherId);
+      alert('Could not find any data for this voucher.');
       return;
     }
 
-    const s = saleSnap.snapshot;
-    console.log('🔍 Using sale snapshot:', s);
+    const s = snapWrapper.snapshot;
+    console.log('🔍 Using snapshot:', JSON.stringify(s, null, 2));
 
-    if (!Array.isArray(s.items)) {
-      console.warn('⚠️ No items found in sale snapshot. Snapshot:', s);
+    if (s.voucher_type === 'SALES') {
+      console.log('📂 Detected SALES voucher. Building invoiceData...');
+
+      // ─── Build items[] ─────────────────────────────────────────
+      const items = Array.isArray(s.items)
+        ? s.items.map(i => ({
+            name:     i.item_name,
+            qty:      i.qty,
+            rate:     parseFloat(i.rate),
+            discount: parseFloat(i.discount),
+            gst:      parseFloat(i.gst),
+            unit:     i.unit,
+            notes:    i.notes,
+          }))
+        : [];
+
+      const totalAmount = items
+        .reduce((sum, i) => {
+          const base = i.qty * i.rate - i.discount;
+          return sum + base + (base * i.gst / 100);
+        }, 0)
+        .toFixed(2);
+
+      // Initialize payload
+      const payload = {
+        customer:      s.reference?.replace(/^Invoice to\s*/i, '') || s.party_name || 'Unknown',
+        invoiceDate:   s.date,
+        invoiceNumber: s.voucher_number,
+        items:         items,
+        totalAmount:   totalAmount,
+        amountPaid:    0,
+        paymentDate:   null,
+        paymentNumber: null,
+        paymentMode:   null,
+        receiptTotal:  0,
+      };
+
+      // ─── Merge any matching RECEIPT snapshot ───────────────────
+      const receiptSnapWrapper = snapshots.find(h =>
+        h.snapshot.voucher_type === 'RECEIPT' &&
+        (h.snapshot.against_voucher === s.id ||
+         h.snapshot.against_voucher === s.voucher_number)
+      );
+
+      if (receiptSnapWrapper) {
+        const r = receiptSnapWrapper.snapshot;
+        console.log('💰 Merging receipt snapshot into invoiceData:', JSON.stringify(r, null, 2));
+
+        const paidEntry = Array.isArray(r.entries)
+          ? r.entries.find(e => e.is_debit)
+          : null;
+
+        payload.paymentDate   = r.date;
+        payload.paymentNumber = r.voucher_number;
+        payload.amountPaid    = paidEntry?.amount ? parseFloat(paidEntry.amount) : 0;
+        payload.paymentMode   = r.payment_mode || 'Unknown';
+        payload.receiptTotal  = r.total_amount != null
+                               ? parseFloat(r.total_amount)
+                               : 0;
+
+        console.log('➡️ invoiceData.paymentDate:',   payload.paymentDate);
+        console.log('➡️ invoiceData.paymentNumber:', payload.paymentNumber);
+        console.log('➡️ invoiceData.amountPaid:',    payload.amountPaid);
+        console.log('➡️ invoiceData.paymentMode:',   payload.paymentMode);
+        console.log('➡️ invoiceData.receiptTotal:',  payload.receiptTotal);
+      }
+
+      console.log('📨 Final invoice payload ready:', payload);
+      console.log('🔗 [openVoucher] Sending to InvoiceTemplate');
+
+      setInvoiceData(payload);
+      setShowInvoiceModal(true);
+      console.log('✅ Invoice modal opened for voucher:', voucherId);
     }
+    else if (s.voucher_type === 'RECEIPT') {
+  console.log('📂 Detected RECEIPT voucher. Building receiptData…');
 
-    const items = (s.items || []).map(i => ({
-      name:     i.item_name,
-      qty:      i.qty,
-      rate:     parseFloat(i.rate),
-      discount: parseFloat(i.discount),
-      gst:      parseFloat(i.gst),
-      unit:     i.unit,
-      notes:    i.notes,
-    }));
+  // ─── 1) Find the “debit” entry (amount the customer actually paid) ───────────
+  const paidEntry = Array.isArray(s.entries)
+    ? s.entries.find(e => e.is_debit)
+    : null;
 
-    const totalAmount = items
-      .reduce((sum, i) => {
-        const base = i.qty * i.rate - i.discount;
-        return sum + base + (base * i.gst / 100);
-      }, 0)
-      .toFixed(2);
+  const amountPaid = paidEntry?.amount
+    ? parseFloat(paidEntry.amount)
+    : 0;
 
-    const payload = {
-      customer:      s.reference?.replace(/^Invoice to\s*/i, '') || s.party_name || 'Unknown',
-      invoiceDate:   s.date,
-      invoiceNumber: s.voucher_number,
-      items:         items,
-      totalAmount:   totalAmount,
-    };
+  // ─── 2) Compute a totalAmount (fall back to amountPaid if total_amount is missing) ───
+  const totalAmount = typeof s.total_amount === 'number'
+    ? parseFloat(s.total_amount)
+    : amountPaid;
 
-    // 3️⃣ Try to merge corresponding RECEIPT snapshot
-    const receiptSnap = snapshots.find(h =>
-      h.snapshot.voucher_type === 'RECEIPT' &&
-      (h.snapshot.against_voucher === s.id || h.snapshot.against_voucher === s.voucher_number)
-    );
+  // ─── 3) Figure out “Received From”: use s.reference if present,
+  //      otherwise fall back to party_name, otherwise “—” ───────────────────────────
+  const receivedFrom =
+    s.reference && s.reference.trim() !== ''
+      ? s.reference.replace(/^Received\s*from\s*/i, '')
+      : (s.party_name && s.party_name.trim() !== ''
+         ? s.party_name
+         : '—');
 
-    if (receiptSnap) {
-      const r = receiptSnap.snapshot;
-      console.log('💰 Merging receipt snapshot:', r);
-      const paidEntry = r.entries?.find(e => e.is_debit);
+  // ─── 4) Build the final receipt payload ──────────────────────────────────────────
+  const receiptPayload = {
+    // exactly mirror the fields you passed to InvoiceTemplate,
+    // plus new “totalAmount” and “amountPaid” fields:
+    partyName:     receivedFrom,      // “Received From”
+    receiptDate:   s.date,            // e.g. "2025-06-02"
+    receiptNumber: s.voucher_number,  // e.g. "REC-2025-0103"
+    paymentMode:   s.payment_mode || 'N/A',
+    amountPaid,                        // e.g. 50
+    totalAmount,                       // e.g. 50  (or s.total_amount if provided)
+    amountInWords: `INR ${totalAmount.toFixed(2)} Only`,
+    reference:     s.reference || '--',
+    // If you also want to pass company-level info exactly as Invoice does,
+    // you can bundle that in here (assuming you already have companyData in outer scope):
+    companyName:    company?.company_name || 'Company Name',
+    companyLogo:    company?.logo_url       || '/default_logo.png',
+    gstNumber:      company?.gstin          || '--',
+    companyAddress: company?.address        || '--',
+    companyPhone:   company?.phone_number   || '--',
+    bankDetails: {
+      bankName:       company?.bank_name       || '--',
+      accountNumber:  company?.account_number  || '--',
+      ifscCode:       company?.ifsc_code       || '--',
+      branch:         company?.branch          || '--',
+    },
+    qrCodeUrl:     company?.qr_code    || null,
+    signatureUrl:  company?.signature  || null,
+  };
 
-      payload.paymentDate   = r.date;
-      payload.paymentNumber = r.voucher_number;
-      payload.paidAmount    = paidEntry?.amount ? parseFloat(paidEntry.amount) : null;
-      payload.paymentMode   = r.payment_mode || 'Unknown';
+  console.log('➡️ receiptData.amountPaid:',     receiptPayload.amountPaid);
+  console.log('➡️ receiptData.totalAmount:',    receiptPayload.totalAmount);
+  console.log('➡️ receiptData.receivedFrom:',   receiptPayload.partyName);
+  console.log('➡️ receiptData.paymentMode:',    receiptPayload.paymentMode);
+  console.log('➡️ receiptData.reference:',      receiptPayload.reference);
+  console.log('📨 Final receipt payload ready:', receiptPayload);
+  console.log('🔗 [openVoucher] Sending to ReceiptTemplate');
+
+  setReceiptData(receiptPayload);
+  setShowReceiptModal(true);
+  console.log('✅ Receipt modal opened for voucher:', voucherId);
+}
+
+    else {
+      console.error('❌ Unsupported voucher_type:', s.voucher_type);
+      alert('Cannot display this voucher type.');
     }
-
-    console.log('📨 Final invoice payload ready:', payload);
-    setInvoiceData(payload);
-    setShowInvoiceModal(true);
-    console.log('✅ Invoice modal opened for voucher:', voucherId);
-
-  } catch (err) {
-    console.error('❌ Error fetching history or opening invoice:', err);
-    toast.error('Failed to load voucher history or invoice');
+  }
+  catch (err) {
+    console.error('❌ Error fetching voucher history or opening template:', err);
+    toast.error('Failed to load voucher data');
   }
 }
 
@@ -647,16 +733,18 @@ const downloadPDF = () => {
           <td>
             ₹{runningBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </td>
-          <td className="action-cell">
-            <button
-              onClick={() => {
-                console.log('🔢 Entry object keys:', Object.keys(e));
-                console.log('🔄 Open history for voucher_id:', e.voucher_id);
-                openInvoice(e.voucher_id);
-              }}
-            >
-              View
-            </button>
+        <td className="action-cell">
+  <button
+    onClick={() => {
+      console.log('🔢 Entry object keys:', Object.keys(e));
+      console.log('🔄 Open history for voucher_id:', e.voucher_id);
+      openVoucher(e.voucher_id);
+    }}
+  >
+    View
+  </button>
+
+
             {' | '}
             <Link
               to={`/voucher-edit/${e.voucher_number}`}
@@ -741,13 +829,9 @@ const downloadPDF = () => {
                   ))}
                 </tbody>
               </table>
-               {showInvoiceModal && invoiceData && (
-        <InvoiceTemplate
-          invoiceData={invoiceData}
-          onClose={() => setShowInvoiceModal(false)}
-          onPrint={() => window.print()}
-        />
-      )}
+
+
+
 
               {/* If you later add items to the snapshot, render them similarly */}
               {v.items && v.items.length > 0 && (
@@ -798,6 +882,27 @@ const downloadPDF = () => {
     </div>
   </div>
 )}
+        {/* ─── Invoice Modal ──────────────────────────────────────────────────── */}
+      {showInvoiceModal && (
+        <InvoiceTemplate
+          invoiceData={invoiceData}
+          onClose={() => setShowInvoiceModal(false)}
+          onSave={() => { /* optional: save PDF or email logic */ }}
+          onPrint={() => window.print()}
+          selectedCompanyId={companyId}
+        />
+      )}
+
+      {/* ─── Receipt Modal ──────────────────────────────────────────────────── */}
+      {showReceiptModal && (
+        <ReceiptTemplate
+          receiptData={receiptData}
+          onClose={() => setShowReceiptModal(false)}
+          onSave={() => { /* optional: save PDF or email logic */ }}
+          onPrint={() => window.print()}
+          selectedCompanyId={companyId}
+        />
+      )}
 
 
 {/*download pdf*/}

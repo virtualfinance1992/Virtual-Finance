@@ -2,58 +2,96 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import './InvoiceTemplate.css';
 
-const InvoiceTemplate = ({ invoiceData, onClose, onSave, onPrint, selectedCompanyId, customerId }) => {
+const InvoiceTemplate = ({
+  invoiceData,
+  onClose,
+  onSave,
+  onPrint,
+  selectedCompanyId,
+  customerId,
+}) => {
+  // ─── 1) DEBUG LOG: Show the full invoiceData prop on every render ────────────────
+  console.log('🔥 [InvoiceTemplate] invoiceData prop =', invoiceData);
+  // ────────────────────────────────────────────────────────────────────────────────
+
+  // ─── 2) HOOKS: Must be called at top level, never inside a conditional ─────────────
   const [companyData, setCompanyData] = useState(null);
 
   useEffect(() => {
-  const companyId = selectedCompanyId || localStorage.getItem('activeCompanyId');
-  const token = localStorage.getItem('accessToken');
+    // Determine which company ID to use
+    const companyId = selectedCompanyId || localStorage.getItem('activeCompanyId');
+    const token = localStorage.getItem('accessToken');
 
-  if (!companyId) {
-    console.warn("⚠️ No company ID provided.");
-    return;
-  }
-
-  if (!token) {
-    console.warn("❌ No access token found.");
-    return;
-  }
-
-  console.log("📡 Fetching company details for Invoice:", companyId);
-
-  axios.get(`http://localhost:8000/api/admin/company/${companyId}/`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
+    if (!companyId) {
+      console.warn('⚠️ No company ID provided.');
+      return;
     }
-  })
-    .then(res => {
-      console.log("✅ Company data fetched for invoice:", res.data);
-      setCompanyData(res.data);
-    })
-    .catch(err => {
-      console.error("❌ Failed to fetch company details for invoice:", err);
-      setCompanyData(null);
-    });
+    if (!token) {
+      console.warn('❌ No access token found.');
+      return;
+    }
 
-}, [selectedCompanyId]);
+    console.log('📡 Fetching company details for Invoice:', companyId);
+    axios
+      .get(`http://localhost:8000/api/admin/company/${companyId}/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .then((res) => {
+        console.log('✅ Company data fetched for invoice:', res.data);
+        setCompanyData(res.data);
+      })
+      .catch((err) => {
+        console.error('❌ Failed to fetch company details for invoice:', err);
+        setCompanyData(null);
+      });
+  }, [selectedCompanyId]);
+  // ────────────────────────────────────────────────────────────────────────────────
 
-
+  // If invoiceData is missing, show an error placeholder
   if (!invoiceData) return <div>❌ No invoice data found.</div>;
 
-  const { items, invoiceDate, totalAmount, amountPaid, paymentMode, invoiceNumber, customer, customerAddress } = invoiceData;
-  const balanceDue = totalAmount - (amountPaid || 0);
+  // ─── 3) DESTRUCTURE invoiceData ────────────────────────────────────────────────
+  const {
+    customer,
+    customerAddress,
+    items = [],
+    invoiceDate,
+    invoiceNumber,
+    totalAmount = 0,
+    amountPaid = 0,
+    paymentMode = 'N/A',
+    paymentNumber = '--',
+    paymentDate = '--',
+    reference = '--',
+    receiptTotal = 0,          // ← NEW: destructure receiptTotal
+  } = invoiceData;
 
+  // Compute balance due
+  const balanceDue = parseFloat(totalAmount) - parseFloat(amountPaid || 0);
+  // ────────────────────────────────────────────────────────────────────────────────
+
+   // 1) Ensure totalAmount and receiptTotal are numbers
+  const invoiceAmtNum   = parseFloat(totalAmount)   || 0;
+  const receiptAmtNum   = parseFloat(receiptTotal)   || 0;
+
+  // 2) Calculate due as invoice minus whatever was actually received
+  const dueAmount = invoiceAmtNum - receiptAmtNum;
+
+  // Utility function to compute base / tax / amount for each line item
   const calculateItemTotals = (item) => {
-    const base = item.qty * item.rate - item.discount;
-    const tax = (base * item.gst / 100).toFixed(2);
+    const base = item.qty * item.rate - (item.discount || 0);
+    const tax = ((base * (item.gst || 0)) / 100).toFixed(2);
     const amount = (base + parseFloat(tax)).toFixed(2);
     return {
       base: base.toFixed(2),
       tax,
-      amount
+      amount,
     };
   };
 
+  // ─── 4) RENDER: All JSX exactly as you provided, with the same className values ─────────
   return (
     <div className="invoice-overlay">
       <div className="invoice-box">
@@ -63,36 +101,61 @@ const InvoiceTemplate = ({ invoiceData, onClose, onSave, onPrint, selectedCompan
         </div>
 
         <table className="meta-table">
-  <tbody>
-    <tr>
-      <td colSpan="2">
-        <div className="company-header">
-          <img src={companyData?.logo || '/default_logo.png'} alt="Logo" className="logo" />
-          <div className="company-text">
-            <h2>{companyData?.company_name || 'Company Name'}</h2>
-            <p style={{ color: 'red' }}>GSTIN: {companyData?.gst_number || '--'}</p>
-            <p>{companyData?.address || '--'}</p>
-            <p>Mobile: {companyData?.phone_number || '--'}</p>
-          </div>
-        </div>
-      </td>
-      <td><strong>Invoice #</strong></td>
-      <td><input type="text" value={invoiceData.invoiceNumber || ''} readOnly /></td>
-    </tr>
-    <tr>
-      <td><strong>Invoice Date</strong></td>
-      <td><input type="date" value={invoiceData.invoiceDate || ''} readOnly /></td>
-      <td><strong>Place of Supply</strong></td>
-      <td><input type="text" value={companyData?.state || '36-TELANGANA'} readOnly /></td>
-    </tr>
-    <tr>
-      <td><strong>Due Date</strong></td>
-      <td><input type="text" value="Immediate" readOnly /></td>
-      <td colSpan="2"></td>
-    </tr>
-  </tbody>
-</table>
-
+          <tbody>
+            <tr>
+              <td colSpan="2">
+                <div className="company-header">
+                  <img
+                    src={companyData?.logo || '/default_logo.png'}
+                    alt="Logo"
+                    className="logo"
+                  />
+                  <div className="company-text">
+                    <h2>{companyData?.company_name || 'Company Name'}</h2>
+                    <p style={{ color: 'red' }}>
+                      GSTIN: {companyData?.gst_number || '--'}
+                    </p>
+                    <p>{companyData?.address || '--'}</p>
+                    <p>Mobile: {companyData?.phone_number || '--'}</p>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <strong>Invoice #</strong>
+              </td>
+              <td>
+                <input type="text" value={invoiceNumber || ''} readOnly />
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Invoice Date</strong>
+              </td>
+              <td>
+                <input type="date" value={invoiceDate || ''} readOnly />
+              </td>
+              <td>
+                <strong>Place of Supply</strong>
+              </td>
+              <td>
+                <input
+                  type="text"
+                  value={companyData?.state || '36-TELANGANA'}
+                  readOnly
+                />
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Due Date</strong>
+              </td>
+              <td>
+                <input type="text" value="Immediate" readOnly />
+              </td>
+              <td colSpan="2"></td>
+            </tr>
+          </tbody>
+        </table>
 
         <table className="address-table">
           <thead>
@@ -104,7 +167,11 @@ const InvoiceTemplate = ({ invoiceData, onClose, onSave, onPrint, selectedCompan
           </thead>
           <tbody>
             <tr>
-              <td>{customer}<br />{customerAddress}</td>
+              <td>
+                {customer}
+                <br />
+                {customerAddress}
+              </td>
               <td>{customerAddress}</td>
               <td>--</td>
             </tr>
@@ -147,8 +214,15 @@ const InvoiceTemplate = ({ invoiceData, onClose, onSave, onPrint, selectedCompan
           <tbody>
             <tr>
               <td>Total Items: {items.length}</td>
-              <td>GST: ₹ {items.reduce((sum, i) => sum + ((i.qty * i.rate) * (i.gst / 100)), 0).toFixed(2)}</td>
-              <td><strong>Total: ₹ {totalAmount}</strong></td>
+              <td>
+                GST: ₹{' '}
+                {items
+                  .reduce((sum, i) => sum + (i.qty * i.rate * (i.gst / 100)), 0)
+                  .toFixed(2)}
+              </td>
+              <td>
+                <strong>Total: ₹ {totalAmount}</strong>
+              </td>
             </tr>
             <tr>
               <td colSpan="3">Amount in words: INR {totalAmount} Only</td>
@@ -156,37 +230,61 @@ const InvoiceTemplate = ({ invoiceData, onClose, onSave, onPrint, selectedCompan
           </tbody>
         </table>
 
-        <table className="summary-table">
-          <tbody>
-            <tr>
-              <td><strong>Paid:</strong></td>
-              <td>₹ {amountPaid || 0}</td>
-              <td><strong>Mode:</strong></td>
-              <td>{paymentMode || 'N/A'}</td>
-            </tr>
-            <tr>
-              <td><strong>Due:</strong></td>
-              <td colSpan="3">₹ {balanceDue.toFixed(2)}</td>
-            </tr>
-          </tbody>
-        </table>
+         <table className="summary-table">
+  <tbody>
+    {/* 1) Receipt # / Receipt Date */}
+    <tr>
+      <td><strong>Receipt #:</strong></td>
+      <td>{paymentNumber || '--'}</td>
+      <td><strong>Receipt Date:</strong></td>
+      <td>{paymentDate || '--'}</td>
+    </tr>
+
+    {/* 2) Receipt Total and Mode on the same row */}
+    <tr>
+      <td><strong>Receipt Total:</strong></td>
+      <td>₹ {parseFloat(receiptTotal).toFixed(2)}</td>
+      <td><strong>Mode:</strong></td>
+      <td>{paymentMode || 'N/A'}</td>
+    </tr>
+
+    {/* 3) Due (pink background spans columns 2–4) */}
+    <tr style={{ backgroundColor: '#ffe7e7' }}>
+      <td><strong>Due:</strong></td>
+      <td colSpan="3">₹ {dueAmount.toFixed(2)}</td>
+    </tr>
+  </tbody>
+</table>
+
+
 
         <table className="footer-box">
           <tbody>
             <tr>
               <td>
-                <strong>Bank Details:</strong><br />
-                Bank: {companyData?.bank_name}<br />
-                A/C: {companyData?.account_number}<br />
-                IFSC: {companyData?.ifsc_code}<br />
+                <strong>Bank Details:</strong>
+                <br />
+                Bank: {companyData?.bank_name}
+                <br />
+                A/C: {companyData?.account_number}
+                <br />
+                IFSC: {companyData?.ifsc_code}
+                <br />
                 Branch: {companyData?.branch}
               </td>
               <td className="qr-cell">
-                {companyData?.qr_code && <img src={companyData.qr_code} alt="QR Code" />}
+                {companyData?.qr_code && (
+                  <img src={companyData.qr_code} alt="QR Code" />
+                )}
               </td>
               <td className="stamp-cell">
-                {companyData?.signature && <img src={companyData.signature} alt="Signature" />}
-                <br />For {companyData?.company_name}<br />(Authorized Signatory)
+                {companyData?.signature && (
+                  <img src={companyData.signature} alt="Signature" />
+                )}
+                <br />
+                For {companyData?.company_name}
+                <br />
+                (Authorized Signatory)
               </td>
             </tr>
           </tbody>
@@ -203,9 +301,15 @@ const InvoiceTemplate = ({ invoiceData, onClose, onSave, onPrint, selectedCompan
         </div>
 
         <div className="action-buttons">
-          <button className="save-btn" onClick={onSave}>Save</button>
-          <button className="print-btn" onClick={onPrint}>Print</button>
-          <button className="close-btn" onClick={onClose}>Close</button>
+          <button className="save-btn" onClick={onSave}>
+            Save
+          </button>
+          <button className="print-btn" onClick={onPrint}>
+            Print
+          </button>
+          <button className="close-btn" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>

@@ -28,6 +28,7 @@ class Voucher(models.Model):
     reference      = models.CharField(max_length=255, blank=True)
     notes          = models.TextField(blank=True)
     created_at     = models.DateTimeField(auto_now_add=True)
+    payment_mode = models.CharField(max_length=20, blank=True, null=True)
 
     # single self‐FK for both payments and receipts
     against_voucher = models.ForeignKey(
@@ -61,6 +62,7 @@ class VoucherItem(models.Model):
     unit = models.CharField(max_length=50, blank=True, null=True)
     notes       = models.TextField(blank=True)  
     remarks = models.TextField(blank=True)
+    
 
     def __str__(self):
         return f"{self.item_name} ({self.qty} x ₹{self.rate})"
