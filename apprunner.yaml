@@ -1,0 +1,75 @@
+# apprunner.yaml
+#
+# AWS App Runner configuration for the Virtual-Finance Django backend.
+# Place this file at the root of your repository: C:\Users\pc5\Virtual-Finance\apprunner.yaml
+
+version: 1.0
+
+services:
+  - serviceName: virtual-finance-backend
+    sourceConfiguration:
+      codeRepository:
+        repositoryUrl: "https://github.com/virtualfinance1992/Virtual-Finance"
+        sourceCodeVersion:
+          type: BRANCH
+          value: main
+        codeConfiguration:
+          configurationSource: REPOSITORY
+          codeConfigurationValues:
+            runtime: PYTHON_3_11
+
+            # Build steps: move into backend, install Python deps, run migrations, collect static files
+            buildCommand: |
+              cd backend &&
+              python -m pip install --upgrade pip &&
+              pip install -r requirements.txt &&
+              python manage.py migrate --no-input &&
+              python manage.py collectstatic --no-input
+
+            # Start Django via Gunicorn on port 8000
+            startCommand: gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000
+
+            port: "8000"
+
+    instanceConfiguration:
+      cpu: "1024"       # 1 vCPU
+      memory: "2048"    # 2 GB RAM
+
+    healthCheckConfiguration:
+      protocol: HTTP
+      path: "/"
+      interval: 10
+      timeout: 5
+      healthyThreshold: 1
+      unhealthyThreshold: 5
+
+    environment:
+      - name: DJANGO_SECRET_KEY
+        value: "<YOUR-DJANGO-SECRET-KEY>"
+      - name: DJANGO_DEBUG
+        value: "False"
+      - name: DJANGO_ALLOWED_HOSTS
+        value: "*"
+      - name: DB_NAME
+        value: "Virtual-Finance"
+      - name: DB_USER
+        value: "postgres"
+      - name: DB_PASSWORD
+        value: "<YOUR-DB-PASSWORD>"
+      - name: DB_HOST
+        value: "<YOUR-RDS-ENDPOINT>.rds.amazonaws.com"
+      - name: DB_PORT
+        value: "5432"
+
+    # If your database is inside a VPC, uncomment and set a VPC Connector ARN:
+    # networkConfiguration:
+    #   egressConfiguration:
+    #     egressType: VPC
+    #     vpcConnectorArn: arn:aws:apprunner:<region>:<account-id>:vpc-connector/<connector-name>
+
+    # If you need access to AWS Secrets Manager or other AWS services, specify an IAM role:
+    # instanceRoleArn: arn:aws:iam::<account-id>:role/<AppRunnerServiceRole>
+
+    tags:
+      - key: Environment
+        value: Production
