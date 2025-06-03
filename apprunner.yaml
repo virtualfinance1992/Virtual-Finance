@@ -1,7 +1,7 @@
 version: 1.0
 
 services:
-  - serviceName: virtual-finance-backend
+  - serviceName: erp_virtualfinance_backend
     sourceConfiguration:
       codeRepository:
         repositoryUrl: "https://github.com/virtualfinance1992/Virtual-Finance"
@@ -12,31 +12,19 @@ services:
           configurationSource: REPOSITORY
           codeConfigurationValues:
             runtime: PYTHON_3_11
-
-            # BUILD COMMAND with explicit echo markers for logging
             buildCommand: |
               echo "=== Step 1: Change directory to backend ===" &&
               cd backend &&
-
               echo "=== Step 2: Upgrade pip ===" &&
               python -m pip install --upgrade pip &&
-              echo "=== pip upgraded successfully ===" &&
-
               echo "=== Step 3: Install Python dependencies ===" &&
               pip install -r requirements.txt &&
-              echo "=== Dependencies installed ===" &&
-
               echo "=== Step 4: Run migrations ===" &&
               python manage.py migrate --no-input &&
-              echo "=== Migrations applied ===" &&
-
               echo "=== Step 5: Collect static files ===" &&
               python manage.py collectstatic --no-input &&
-              echo "=== Static files collected ==="
-
-            # START COMMAND: launch Django via Gunicorn on port 8000
+              echo "=== Build complete ==="
             startCommand: gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000
-
             port: "8000"
 
     instanceConfiguration:
