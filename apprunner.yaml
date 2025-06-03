@@ -1,8 +1,3 @@
-# apprunner.yaml
-#
-# AWS App Runner configuration for the Virtual-Finance Django backend.
-# Place this file at the root of your repository: C:\Users\pc5\Virtual-Finance\apprunner.yaml
-
 version: 1.0
 
 services:
@@ -18,22 +13,35 @@ services:
           codeConfigurationValues:
             runtime: PYTHON_3_11
 
-            # Build steps: move into backend, install Python deps, run migrations, collect static files
+            # BUILD COMMAND with explicit echo markers for logging
             buildCommand: |
+              echo "=== Step 1: Change directory to backend ===" &&
               cd backend &&
-              python -m pip install --upgrade pip &&
-              pip install -r requirements.txt &&
-              python manage.py migrate --no-input &&
-              python manage.py collectstatic --no-input
 
-            # Start Django via Gunicorn on port 8000
+              echo "=== Step 2: Upgrade pip ===" &&
+              python -m pip install --upgrade pip &&
+              echo "=== pip upgraded successfully ===" &&
+
+              echo "=== Step 3: Install Python dependencies ===" &&
+              pip install -r requirements.txt &&
+              echo "=== Dependencies installed ===" &&
+
+              echo "=== Step 4: Run migrations ===" &&
+              python manage.py migrate --no-input &&
+              echo "=== Migrations applied ===" &&
+
+              echo "=== Step 5: Collect static files ===" &&
+              python manage.py collectstatic --no-input &&
+              echo "=== Static files collected ==="
+
+            # START COMMAND: launch Django via Gunicorn on port 8000
             startCommand: gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000
 
             port: "8000"
 
     instanceConfiguration:
-      cpu: "1024"       # 1 vCPU
-      memory: "2048"    # 2 GB RAM
+      cpu: "1024"
+      memory: "2048"
 
     healthCheckConfiguration:
       protocol: HTTP
@@ -60,15 +68,6 @@ services:
         value: "<YOUR-RDS-ENDPOINT>.rds.amazonaws.com"
       - name: DB_PORT
         value: "5432"
-
-    # If your database is inside a VPC, uncomment and set a VPC Connector ARN:
-    # networkConfiguration:
-    #   egressConfiguration:
-    #     egressType: VPC
-    #     vpcConnectorArn: arn:aws:apprunner:<region>:<account-id>:vpc-connector/<connector-name>
-
-    # If you need access to AWS Secrets Manager or other AWS services, specify an IAM role:
-    # instanceRoleArn: arn:aws:iam::<account-id>:role/<AppRunnerServiceRole>
 
     tags:
       - key: Environment
