@@ -54,3 +54,9 @@ services:
     tags:
       - key: Environment
         value: Production
+
+
+# Edit the file in-place to add a comment at the top
+(Get-Content .\apprunner.yaml) |
+  ForEach-Object { if ($_.TrimStart() -eq "version: 1.0") { "# noop comment" } ; $_ } |
+  Set-Content .\apprunner.yaml
