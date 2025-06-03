@@ -1,49 +1,33 @@
-# ─── Python bytecode and caches ──────────────────────────────────────────
+# ─── Python caches and virtual‐envs ─────────────────────────────────────────
 **/__pycache__/
 **/*.py[cod]
 **/*.egg-info/
-**/*.egg
 **/.Python
 
-# ─── Python virtual environments ─────────────────────────────────────────
-# Ignore any folder named “venv” or “env” at any level
-venv/
-*/venv/
-env/
-*/env/
+# If your backend’s venv folder is named `backend/venv/`, keep that. Otherwise remove.
 backend/venv/
-render-env/
-render-clean-env/
-backend/render-clean-env/
-backend/render-env/
+venv/
+env/
 
-
-# ─── SQLite / local DB files ─────────────────────────────────────────────
-*.sqlite3
-db.sqlite3
-
-# ─── Django static/media files ──────────────────────────────────────────
-static/
-staticfiles/
-media/
-
-# ─── Node.js / React artifacts ───────────────────────────────────────────
-node_modules/
-**/node_modules/
+# ─── Node/React build & modules ───────────────────────────────────────────────
 admin-frontend/node_modules/
-admin_frontend_live/admin-frontend/node_modules/
-frontend/node_modules/
 admin-frontend/build/
+admin_frontend_live/admin-frontend/node_modules/
 admin_frontend_live/admin-frontend/build/
+frontend/node_modules/
 frontend/build/
 
-# ─── Logs, OS files ─────────────────────────────────────────────────────
+# ─── Django static/media files (collected) ──────────────────────────────────
+ static/
+ staticfiles/
+ media/
+
+# ─── IDE / OS temp files ─────────────────────────────────────────────────────
 *.log
 *.bak
 .DS_Store
 Thumbs.db
 
-# ─── VS Code / IDE folders ──────────────────────────────────────────────
 .vscode/
 .idea/
 *.suo
@@ -51,11 +35,14 @@ Thumbs.db
 *.userosscache
 *.sln.docstates
 
-# ─── ZIP / deployment archives ────────────────────────────────────────────
-*.zip
-
-# ─── Miscellaneous ───────────────────────────────────────────────────────
+# ─── Environment / Secrets ────────────────────────────────────────────────────
 .env
-
-
 whatsapp_erp_microservice/config.py
+
+# ─── Database (if you ever switch to SQLite) ──────────────────────────────────
+# db.sqlite3
+
+
+# Ignore Render environment folders
+backend/render-clean-env/
+backend/render-env/
