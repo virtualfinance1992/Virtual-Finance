@@ -11,7 +11,7 @@ services:
         codeConfiguration:
           configurationSource: REPOSITORY
           codeConfigurationValues:
-            runtime: PYTHON_3_10
+            runtime: PYTHON_3_11
             buildCommand: |
               echo "=== Step 1: Change directory to backend ===" &&
               cd backend &&
