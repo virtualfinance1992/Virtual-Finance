@@ -108,22 +108,29 @@ TEMPLATES = [
 WSGI_APPLICATION = "virtual_finance.wsgi.application"
 
 # ─── DATABASE ─────────────────────────────────────────────────────────────────
-import os
-from pathlib import Path
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("DB_NAME", "Virtual-Finance"),
-        "USER": os.environ.get("DB_USER", "postgres"),
-        "PASSWORD": os.environ.get("DB_PASSWORD", ""),
-        "HOST": os.environ.get("DB_HOST", "localhost"),
-        "PORT": os.environ.get("DB_PORT", "5432"),
+# === DATABASES section ===
+if os.getenv("DB_HOST"):
+    # … your existing Postgres settings …
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME"),
+            "USER": os.getenv("DB_USER"),
+            "PASSWORD": os.getenv("DB_PASSWORD"),
+            "HOST": os.getenv("DB_HOST"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
     }
-}
-
+else:
+    # fallback to a local SQLite for build-time
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # ─── AUTH PASSWORD VALIDATION ─────────────────────────────────────────────────
