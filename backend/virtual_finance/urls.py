@@ -15,7 +15,7 @@ def healthcheck(request):
 
 # Redirect view to frontend
 def redirect_to_frontend(request):
-   return HttpResponseRedirect("http://localhost:3000/")  # adjust if needed
+   return HttpResponseRedirect("https://kah6rkvybi.ap-south-1.awsapprunner.com/")  # adjust if neededhttps://kah6rkvybi.ap-south-1.awsapprunner.com/
 
 urlpatterns = [
     path('', redirect_to_frontend),
