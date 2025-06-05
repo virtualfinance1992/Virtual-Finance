@@ -15,44 +15,45 @@
       "CodeConfiguration": {
         "ConfigurationSource": "API",
         "CodeConfigurationValues": {
-          "Runtime": "PYTHON_311",
-          "BuildCommand": "echo \"=== Step 1: Change directory to backend ===\" && cd backend && echo \"=== Step 2: Install Python dependencies ===\" && python3 -m pip install -r requirements.txt && echo \"=== Step 3: Collect static files ===\" && python3 manage.py collectstatic --no-input && echo \"=== Build complete ===\"",
+          "Runtime":      "PYTHON_311",
+          "BuildCommand": "echo \"=== Step 1: Change directory to backend ===\" && cd backend && echo \"=== Step 2: Install Python dependencies ===\" && python3 -m pip install -r requirements.txt && echo \"=== Step 3: Run migrations ===\" && python3 manage.py migrate --no-input && echo \"=== Step 4: Collect static files ===\" && python3 manage.py collectstatic --no-input && echo \"=== Build complete ===\"",
           "StartCommand": "python3 -m gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000",
-          "Port": "8000"
+          "Port":         "8000",
+
+          "RuntimeEnvironmentVariables": {
+            "DJANGO_SECRET_KEY":    "<YOUR-DJANGO-SECRET-KEY>",
+            "DJANGO_DEBUG":         "False",
+            "DJANGO_ALLOWED_HOSTS": "*",
+            "DB_NAME":              "Virtual-Finance",
+            "DB_USER":              "postgres",
+            "DB_PASSWORD":          "<YOUR-DB-PASSWORD>",
+            "DB_HOST":              "<YOUR-RDS-ENDPOINT>.rds.amazonaws.com",
+            "DB_PORT":              "5432"
+          }
         }
       }
     },
-    "Environment": [
-      { "Name": "DJANGO_SECRET_KEY",    "Value": "<YOUR‐SECRET‐KEY>"    },
-      { "Name": "DJANGO_DEBUG",         "Value": "False"                },
-      { "Name": "DJANGO_ALLOWED_HOSTS", "Value": "*"                    },
-      { "Name": "DB_NAME",              "Value": "Virtual-Finance"      },
-      { "Name": "DB_USER",              "Value": "postgres"             },
-      { "Name": "DB_PASSWORD",          "Value": "<YOUR‐DB‐PASSWORD>"    },
-      { "Name": "DB_HOST",              "Value": "<YOUR‐RDS‐ENDPOINT>"   },
-      { "Name": "DB_PORT",              "Value": "5432"                 }
-    ],
     "AutoDeploymentsEnabled": false
   },
 
   "InstanceConfiguration": {
-    "Cpu": "1024",
-    "Memory": "2048",
+    "Cpu":             "1024",
+    "Memory":          "2048",
     "InstanceRoleArn": "arn:aws:iam::771415040052:role/AppRunnerCustomInstanceRole"
   },
 
   "HealthCheckConfiguration": {
-    "Protocol": "HTTP",
-    "Path": "/health/",
-    "Interval": 10,
-    "Timeout": 5,
-    "HealthyThreshold": 1,
+    "Protocol":           "HTTP",
+    "Path":               "/healthz",
+    "Interval":           10,
+    "Timeout":            5,
+    "HealthyThreshold":   1,
     "UnhealthyThreshold": 5
   },
 
   "NetworkConfiguration": {
     "EgressConfiguration": {
-      "EgressType": "VPC",
+      "EgressType":   "VPC",
       "VpcConnectorArn": "arn:aws:apprunner:ap-south-1:771415040052:vpcconnector/erp-vpc-connector/1/0f0250053027421b80571023ffa019a4"
     },
     "IngressConfiguration": {
@@ -61,13 +62,13 @@
   },
 
   "ObservabilityConfiguration": {
-    "ObservabilityEnabled": true,
+    "ObservabilityEnabled":           true,
     "ObservabilityConfigurationArn": "arn:aws:apprunner:ap-south-1:771415040052:observabilityconfiguration/DefaultConfiguration/1/00000000000000000000000000000001"
   },
 
   "Tags": [
     {
-      "Key": "Environment",
+      "Key":   "Environment",
       "Value": "Production"
     }
   ]
