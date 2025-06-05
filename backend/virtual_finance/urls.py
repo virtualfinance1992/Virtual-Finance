@@ -13,11 +13,11 @@ def healthz(request):
     return HttpResponse("OK", content_type="text/plain")
 
 # Redirect view to frontend
-# def redirect_to_frontend(request):
-#    return HttpResponseRedirect("http://localhost:3000/")  # adjust if needed
+def redirect_to_frontend(request):
+   return HttpResponseRedirect("http://localhost:3000/")  # adjust if needed
 
 urlpatterns = [
-    #path('', redirect_to_frontend),
+    path('', redirect_to_frontend),
     path('admin/', admin.site.urls),
     path('api/admin/', include('user_mgmt.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
