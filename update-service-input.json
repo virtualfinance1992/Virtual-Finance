@@ -1,25 +1,23 @@
 {
-  "ServiceName": "erp_virtualfinance_backend",
+  "ServiceArn": "arn:aws:apprunner:ap-south-1:771415040052:service/erp_virtualfinance_backend/c11dbbeb735b47d5b0042cc1e5b70a45",
+
   "SourceConfiguration": {
-    "AuthenticationConfiguration": {
-      "ConnectionArn": "arn:aws:apprunner:ap-south-1:771415040052:connection/Erp_virtualfinance/0dbb4119f17b4eff8f3cca4b72d81f1f"
-    },
     "CodeRepository": {
       "RepositoryUrl": "https://github.com/virtualfinance1992/Virtual-Finance",
+      "SourceDirectory": "/",
       "SourceCodeVersion": {
         "Type": "BRANCH",
         "Value": "main"
       },
-      "SourceDirectory": "/",
       "CodeConfiguration": {
         "ConfigurationSource": "API",
         "CodeConfigurationValues": {
           "Runtime": "PYTHON_311",
-          "BuildCommand": "echo \"=== Step 1: Change directory to backend ===\" && cd backend && echo \"=== Step 2: Install Python dependencies ===\" && python3 -m pip install -r requirements.txt && echo \"=== Step 3: Collect static files ===\" && python3 manage.py collectstatic --no-input && echo \"=== Build complete ===\"",
-          "StartCommand": "sh -c 'cd backend && python3 -m gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000'",
+          "BuildCommand": "echo \"=== Step 1: Change directory to backend ===\" && cd backend && echo \"=== Step 2: Install Python dependencies ===\" && python3 -m pip install -r requirements.txt && echo \"=== Step 3: Run migrations ===\" && python3 manage.py migrate --no-input && echo \"=== Step 4: Collect static files ===\" && python3 manage.py collectstatic --no-input && echo \"=== Build complete ===\"",
+          "StartCommand": "python3 -m gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000",
           "Port": "8000",
           "RuntimeEnvironmentVariables": {
-            "DJANGO_SECRET_KEY": "<YOUR-SECRET-KEY>",
+            "DJANGO_SECRET_KEY": "<YOUR-DJANGO-SECRET-KEY>",
             "DJANGO_DEBUG": "False",
             "DJANGO_ALLOWED_HOSTS": "*",
             "DB_NAME": "Virtual-Finance",
@@ -31,21 +29,27 @@
         }
       }
     },
-    "AutoDeploymentsEnabled": false
+    "AutoDeploymentsEnabled": false,
+    "AuthenticationConfiguration": {
+      "ConnectionArn": "arn:aws:apprunner:ap-south-1:771415040052:connection/Erp_virtualfinance/0dbb4119f17b4eff8f3cca4b72d81f1f"
+    }
   },
+
   "InstanceConfiguration": {
     "Cpu": "1024",
     "Memory": "2048",
     "InstanceRoleArn": "arn:aws:iam::771415040052:role/AppRunnerCustomInstanceRole"
   },
+
   "HealthCheckConfiguration": {
     "Protocol": "HTTP",
-    "Path": "/health/",
+    "Path": "/healthz",
     "Interval": 10,
     "Timeout": 5,
     "HealthyThreshold": 1,
     "UnhealthyThreshold": 5
   },
+
   "NetworkConfiguration": {
     "EgressConfiguration": {
       "EgressType": "VPC",
@@ -55,14 +59,9 @@
       "IsPubliclyAccessible": true
     }
   },
+
   "ObservabilityConfiguration": {
     "ObservabilityEnabled": true,
     "ObservabilityConfigurationArn": "arn:aws:apprunner:ap-south-1:771415040052:observabilityconfiguration/DefaultConfiguration/1/00000000000000000000000000000001"
-  },
-  "Tags": [
-    {
-      "Key": "Environment",
-      "Value": "Production"
-    }
-  ]
+  }
 }
