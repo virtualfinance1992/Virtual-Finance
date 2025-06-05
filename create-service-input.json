@@ -17,7 +17,7 @@
         "CodeConfigurationValues": {
           "Runtime": "PYTHON_311",
           "BuildCommand": "echo \"=== Step 1: CD into backend ===\" && cd backend && echo \"=== Step 2: Install deps ===\" && python3 -m pip install -r requirements.txt && echo \"=== Step 3: Collect static files ===\" && python3 manage.py collectstatic --no-input && echo \"=== Build complete ===\"",
-          "StartCommand": "python3 -m gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000",
+          "StartCommand": "sh -c 'cd backend && python3 -m gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000'",
           "Port": "8000",
           "RuntimeEnvironmentVariables": {
             "DJANGO_SECRET_KEY": "<YOUR-SECRET-KEY>",
