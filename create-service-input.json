@@ -29,7 +29,7 @@ echo \"Build complete\"",
             "DJANGO_ALLOWED_HOSTS": "*",
             "DB_NAME": "postgres",
             "DB_USER": "erp_admin",
-            "DB_PASSWORD": "Vv0265253114",
+           "DB_PASSWORD":"Vv0265253114",
             "DB_HOST": "erp-postgres-prod.c9a8aowg4fx7.ap-south-1.rds.amazonaws.com",
             "DB_PORT": "5432"
           }
