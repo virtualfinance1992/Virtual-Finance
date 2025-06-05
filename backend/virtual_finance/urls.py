@@ -9,8 +9,8 @@ from django.conf.urls.static import static
 
 from django.http import HttpResponse
 
-def healthcheck(request):
-    return HttpResponse("OK", status=200)
+def healthz(request):
+    return HttpResponse("OK", content_type="text/plain")
 
 # Redirect view to frontend
 # def redirect_to_frontend(request):
@@ -30,7 +30,7 @@ urlpatterns = [
     path('api/reports/', include('reports.urls')),
     path('api/metrics/', include('analytics.urls')),
     path('api/voucher-audit/', include('voucher_audit.urls')),
-    path("health/", healthcheck),
+    path("healthz", healthz),
 ]
 
 # ✅ Serve media files in development
