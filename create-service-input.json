@@ -33,6 +33,19 @@
         }
       }
     },
+<<<<<<< HEAD
+=======
+    "Environment": [
+      { "Name": "DJANGO_SECRET_KEY",    "Value": "<YOUR-SECRET-KEY>"    },
+      { "Name": "DJANGO_DEBUG",         "Value": "False"                },
+      { "Name": "DJANGO_ALLOWED_HOSTS", "Value": "*"                    },
+      { "Name": "DB_NAME",              "Value": "Virtual-Finance"      },
+      { "Name": "DB_USER",              "Value": "postgres"             },
+      { "Name": "DB_PASSWORD",          "Value": "<YOUR-DB-PASSWORD>"    },
+      { "Name": "DB_HOST",              "Value": "<YOUR-RDS-ENDPOINT>"   },
+      { "Name": "DB_PORT",              "Value": "5432"                 }
+    ],
+>>>>>>> origin/main
     "AutoDeploymentsEnabled": false
   },
 
