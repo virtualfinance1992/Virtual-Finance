@@ -24,13 +24,13 @@
 >>>>>>> origin/main
           "Port": "8000",
           "RuntimeEnvironmentVariables": {
-            "DJANGO_SECRET_KEY": "<YOUR-SECRET-KEY>",
+            "DJANGO_SECRET_KEY": "x%)(#ja8_5m0p8ezn!tq$)%i8+l3wmq$#!$$hvy8_)e+c(=6@k", 
             "DJANGO_DEBUG": "False",
             "DJANGO_ALLOWED_HOSTS": "*",
-            "DB_NAME": "Virtual-Finance",
-            "DB_USER": "postgres",
-            "DB_PASSWORD": "<YOUR-DB-PASSWORD>",
-            "DB_HOST": "<YOUR-RDS-ENDPOINT>.rds.amazonaws.com",
+            "DB_NAME": "postgres",
+            "DB_USER": "erp_admin"
+            "DB_PASSWORD": "Vv0265253114",
+            "DB_HOST": "erp-postgres-prod.c9a8aowg4fx7.ap-south-1.rds.amazonaws.com",
             "DB_PORT": "5432"
           }
         }
