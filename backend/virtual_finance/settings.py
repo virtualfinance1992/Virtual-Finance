@@ -108,7 +108,6 @@ TEMPLATES = [
 WSGI_APPLICATION = "virtual_finance.wsgi.application"
 
 # ─── DATABASE ─────────────────────────────────────────────────────────────────
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 # === DATABASES section ===
 if os.getenv("DB_HOST"):
