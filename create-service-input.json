@@ -10,15 +10,27 @@
         "Type": "BRANCH",
         "Value": "main"
       },
+      //
+      // Point App Runner at `backend/` so that both build and start run with `/app/backend` as cwd.
       "SourceDirectory": "backend",
       "CodeConfiguration": {
         "ConfigurationSource": "API",
         "CodeConfigurationValues": {
           "Runtime": "PYTHON_311",
-          "BuildCommand": "echo \"Step 1: upgrade pip\" && python3 -m pip install --upgrade pip && echo \"Step 2: install deps into /.deps\" && python3 -m pip install --target /app/backend/.deps -r requirements.txt && echo \"Step 3: run migrations\" && PYTHONPATH=/app/backend/.deps python3 manage.py migrate --no-input && echo \"Step 4: collect static files\" && PYTHONPATH=/app/backend/.deps python3 manage.py collectstatic --no-input && echo \"Build complete\"",
-          "StartCommand": "sh -c \"PYTHONPATH=/app/backend/.deps python3 -m gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000\"",
+
+          //
+          // BUILD: 1) create .deps  2) upgrade pip  3) install into .deps  4) migrate  5) collectstatic
+          "BuildCommand": "echo \"Step 1: create .deps\" && mkdir -p .deps && echo \"Step 2: upgrade pip\" && python3 -m pip install --upgrade pip && echo \"Step 3: install deps into .deps\" && python3 -m pip install --target .deps -r requirements.txt && echo \"Step 4: run migrations\" && PYTHONPATH=./.deps python3 manage.py migrate --no-input && echo \"Step 5: collect static files\" && PYTHONPATH=./.deps python3 manage.py collectstatic --no-input && echo \"Build complete\"",
+
+          //
+          // START: We set PYTHONPATH in RuntimeEnvironmentVariables (no extra shell wrapper needed).
+          "StartCommand": "gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000",
           "Port": "8000",
+
+          //
+          // Add PYTHONPATH here so that Gunicorn can import Django from .deps
           "RuntimeEnvironmentVariables": {
+            "PYTHONPATH": "./.deps",
             "DJANGO_SECRET_KEY": "x%)(#ja8_5m0p8ezn!tq$)%i8+l3wmq$#!$$hvy8_)e+c(=6@k",
             "DJANGO_DEBUG": "False",
             "DJANGO_ALLOWED_HOSTS": "*",
