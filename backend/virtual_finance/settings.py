@@ -107,7 +107,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "virtual_finance.wsgi.application"
 
-# ─── DATABASE ─────────────────────────────────────────────────────────────────
+
 
 # === DATABASES section ===
 if os.getenv("DB_HOST"):
