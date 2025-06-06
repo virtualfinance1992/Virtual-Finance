@@ -11,17 +11,12 @@
         "Value": "main"
       },
       "SourceDirectory": "backend",
-
       "CodeConfiguration": {
         "ConfigurationSource": "API",
         "CodeConfigurationValues": {
           "Runtime": "PYTHON_311",
-
           "BuildCommand": "echo \"Step 1: upgrade pip\" && python3 -m pip install --upgrade pip && echo \"Step 2: install deps into /.deps\" && python3 -m pip install --target /app/backend/.deps -r requirements.txt && echo \"Step 3: run migrations\" && python3 manage.py migrate --no-input && echo \"Step 4: collect static files\" && python3 manage.py collectstatic --no-input && echo \"Build complete\"",
-
-          // No "cd backend" here, because App Runner’s build will automatically run inside /app/backend
           "StartCommand": "PYTHONPATH=/app/backend/.deps:$PYTHONPATH gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000",
-
           "Port": "8000",
           "RuntimeEnvironmentVariables": {
             "DJANGO_SECRET_KEY": "x%)(#ja8_5m0p8ezn!tq$)%i8+l3wmq$#!$$hvy8_)e+c(=6@k",
@@ -38,13 +33,11 @@
     },
     "AutoDeploymentsEnabled": false
   },
-
   "InstanceConfiguration": {
     "Cpu": "1024",
     "Memory": "2048",
     "InstanceRoleArn": "arn:aws:iam::771415040052:role/AppRunnerCustomInstanceRole"
   },
-
   "HealthCheckConfiguration": {
     "Protocol": "HTTP",
     "Path": "/health/",
@@ -53,7 +46,6 @@
     "HealthyThreshold": 1,
     "UnhealthyThreshold": 5
   },
-
   "NetworkConfiguration": {
     "EgressConfiguration": {
       "EgressType": "VPC",
@@ -63,12 +55,10 @@
       "IsPubliclyAccessible": true
     }
   },
-
   "ObservabilityConfiguration": {
     "ObservabilityEnabled": true,
     "ObservabilityConfigurationArn": "arn:aws:apprunner:ap-south-1:771415040052:observabilityconfiguration/DefaultConfiguration/1/00000000000000000000000000000001"
   },
-
   "Tags": [
     {
       "Key": "Environment",
