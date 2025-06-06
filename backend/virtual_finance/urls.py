@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
-#from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 # ✅ Import settings and static for media files
@@ -12,11 +12,11 @@ from django.http import HttpResponse
 
 
 # Redirect view to frontend
-#def redirect_to_frontend(request):
-   #return HttpResponseRedirect("https://kah6rkvybi.ap-south-1.awsapprunner.com/")  # adjust if neededhttps://kah6rkvybi.ap-south-1.awsapprunner.com/
+def redirect_to_frontend(request):
+   return HttpResponseRedirect("http://localhost:3000/")  # adjust if needed  # adjust if neededhttps://kah6rkvybi.ap-south-1.awsapprunner.com/
 
 urlpatterns = [
-    #path('', redirect_to_frontend),
+    path('', redirect_to_frontend),
     path('admin/', admin.site.urls),
     path('api/admin/', include('user_mgmt.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
