@@ -10,8 +10,7 @@
         "Type": "BRANCH",
         "Value": "main"
       },
-      //
-      // Point App Runner at `backend/` so that both build and start run with `/app/backend` as cwd.
+    
       "SourceDirectory": "backend",
       "CodeConfiguration": {
         "ConfigurationSource": "API",
