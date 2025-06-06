@@ -16,9 +16,7 @@
         "CodeConfigurationValues": {
           "Runtime": "PYTHON_311",
 
-          "BuildCommand": "python3 -m pip install --upgrade pip && python3 -m pip install --target /app/backend/.deps -r requirements.txt && python3 manage.py migrate --no-input && python3 manage.py collectstatic --no-input",
-
-         "BuildCommand": "python3 -m pip install --upgrade pip && python3 -m pip install --target /app/backend/.deps -r requirements.txt && export PYTHONPATH=/app/backend/.deps:$PYTHONPATH && python3 manage.py migrate --no-input && python3 manage.py collectstatic --no-input",
+          "BuildCommand": "python3 -m pip install --upgrade pip && python3 -m pip install --target /app/backend/.deps -r requirements.txt && export PYTHONPATH=/app/backend/.deps:$PYTHONPATH && python3 manage.py migrate --no-input && python3 manage.py collectstatic --no-input",
 
           "StartCommand": "sh -c \"export PYTHONPATH=/app/backend/.deps:$PYTHONPATH && python3 -m gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000\"",
           "Port": "8000",
