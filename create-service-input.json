@@ -22,7 +22,7 @@
           "BuildCommand": "echo \"Step 1: create .deps\" && mkdir -p .deps && echo \"Step 2: upgrade pip\" && python3 -m pip install --upgrade pip && echo \"Step 3: install deps into .deps\" && python3 -m pip install --target .deps -r requirements.txt && echo \"Step 4: run migrations\" && PYTHONPATH=./.deps python3 manage.py migrate --no-input && echo \"Step 5: collect static files\" && PYTHONPATH=./.deps python3 manage.py collectstatic --no-input && echo \"Build complete\"",
 
         
-          "StartCommand": "gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000",
+          "StartCommand": "python3 -m gunicorn virtual_finance.wsgi:application --bind 0.0.0.0:8000"
           "Port": "8000",
 
 
